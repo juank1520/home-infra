@@ -18,7 +18,9 @@ services:
 
     networks:
       - proxy_net
-
+      - dns_net
 networks:
   proxy_net:
+    external: true
+  dns_net:
     external: true
