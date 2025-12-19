@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    hostname: pihole
+    restart: unless-stopped
+
+    env_file:
+      - ../../.env
+
+    environment:
+      TZ: America/Guatemala
+      FTLCONF_webserver_api_password: admin123
+      FTLCONF_dns_listeningMode: "ALL"
+
+    volumes:
+      - ./etc-pihole:/etc/pihole
+      - ./etc-dnsmasq.d:/etc/dnsmasq.d
+
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8081:80/tcp"
+
+    networks:
+      - dns_net
+      - proxy_net
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pihole.rule=Host(`pihole.lan`)"
+      - "traefik.http.routers.pihole.entrypoints=web"
+      - "traefik.http.services.pihole.loadbalancer.server.port=80"
+
+    cap_add:
+      - NET_ADMIN
+
+    healthcheck:
+      test: ["CMD", "dig", "@127.0.0.1", "google.com"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  dns_net:
+    external: true
+
+  proxy_net:
+    external: true

@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  networks:
+    image: alpine:latest
+    container_name: docker-networks-bootstrap
+    command: ["sleep", "infinity"]
+    networks:
+      - dns_net
+      - proxy_net
+
+networks:
+  dns_net:
+    name: dns_net
+    driver: bridge
+
+  proxy_net:
+    name: proxy_net
+    driver: bridge
+
