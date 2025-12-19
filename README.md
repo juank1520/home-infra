@@ -1,8 +1,8 @@
 
 ## Orden de servicios para levantar
-1. network ```systemctl status docker-compose@network```
-2. traefik (reverse proxy) ```systemctl status docker-compose@traefik```
-3. pi-hole (DNS) ```systemctl status docker-compose@pi-hole```
+1. network ```systemctl start docker-compose@network```
+2. traefik (reverse proxy) ```systemctl start docker-compose@traefik```
+3. pi-hole (DNS) ```systemctl start docker-compose@pi-hole```
 
 ## Gestion de imagenes en docker para arranque automatico
 ### Paso 1
