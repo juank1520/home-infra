@@ -16,4 +16,4 @@ ExecStop=/usr/bin/docker compose down
 TimeoutStartSec=0
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=stacks.target

@@ -4,6 +4,9 @@
 2. traefik (reverse proxy) ```sudo systemctl start docker-compose@traefik```
 3. pi-hole (DNS) ```sudo systemctl start docker-compose@pi-hole```
 
+## Creamos los link virutales
+Creamos los links virtuales de docker-compose@.service y stacks.target para poder manejar las imagenes de docker con systemctl y ejecutarlas en la inicializacion
+
 ## Gestion de imagenes en docker para arranque automatico
 ### Paso 1
 Creamos el archivo docker-compose@.service dentro del repo
