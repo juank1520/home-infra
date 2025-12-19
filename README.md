@@ -6,6 +6,11 @@
 
 ## Creamos los link virutales
 Creamos los links virtuales de docker-compose@.service y stacks.target para poder manejar las imagenes de docker con systemctl y ejecutarlas en la inicializacion
+Cada vez que se crea un servicio se tiene que dar de alta el el stacks target con ```sudo systemctl enable docker-compose@SERVICE-DOCKER-FILE```
+Y se tiene que agregar ese comando al ini.sh
+
+Para ver la lista de servicios que corren con stacks.target 
+```systemctl list-dependencies stacks.target```
 
 ## Gestion de imagenes en docker para arranque automatico
 ### Paso 1
