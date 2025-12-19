@@ -14,6 +14,8 @@ services:
       TZ: America/Guatemala
       FTLCONF_webserver_api_password: admin123
       FTLCONF_dns_listeningMode: "ALL"
+      FTLCONF_misc_etc_dnsmasq_d: 'true'
+      FTLCONF_dns_reply_host_IPv4: '192.168.1.144'
 
     volumes:
       - ./etc-pihole:/etc/pihole
@@ -36,6 +38,8 @@ services:
 
     cap_add:
       - NET_ADMIN
+      - CAP_SYS_TIME
+      - CAP_SYS_NICE
 
     healthcheck:
       test: ["CMD", "dig", "@127.0.0.1", "google.com"]
