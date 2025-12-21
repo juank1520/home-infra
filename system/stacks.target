@@ -2,3 +2,6 @@
 Description=All Docker Compose Stacks
 Requires=docker.service
 After=docker.service network-online.target
+
+[Install]
+WantedBy=multi-user.target

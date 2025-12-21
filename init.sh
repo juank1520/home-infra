@@ -3,6 +3,10 @@ sudo ln -s /home/juanca/infra/system/docker-compose@.service /etc/systemd/system
 sudo ln -s /home/juanca/infra/system/stacks.target /etc/systemd/system/stacks.target
 
 
+# Link docker services into stack.target docker-compose@DOCKER-FILE-NAME
 sudo systemctl enable docker-compose@networks
 sudo systemctl enable docker-compose@pi-hole
 sudo systemctl enable docker-compose@traefik
+
+# Enable stacks.target to inicilize when the system starts
+sudo systemctl enable stacks.target

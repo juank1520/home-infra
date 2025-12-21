@@ -7,20 +7,40 @@ services:
     restart: unless-stopped
 
     command:
-      - "--configFile=/etc/traefik/traefik.yml"
+      - "--configFile=/traefik.yml"
 
     ports:
       - "80:80"
+      - "443:443"
 
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ./traefik.yml:/traefik.yml:ro
+      - ./config.yml:/config.yml:ro
+      - ./certs/:/certs/:ro
+      - ./logs:/var/log/traefik
 
     networks:
       - proxy_net
-      - dns_net
+#      - dns_net
+
+    security_opt:
+      - no-new-privileges:true
+
+    labels:
+      - "traefik.enable=false"
+
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+
 networks:
   proxy_net:
     external: true
-  dns_net:
-    external: true
+#  dns_net:
+#    external: true

@@ -1,4 +1,9 @@
 
+## Networks
+Existen dos redes
+1. dns_net: Resuelve los DNS, ecucha en el puerto 53/tcp y 53/udp, y resuleve los nombres como pihole.lan a la ip de la rasperry, esta red solo debe de ser visible para pi-hole
+2. proxy_net: Hace que traefik redireccione el trafico al contenedor dependiendo de que Host venga el trafico
+
 ## Orden de servicios para levantar
 1. network ```sudo systemctl start docker-compose@networks```
 2. traefik (reverse proxy) ```sudo systemctl start docker-compose@traefik```
@@ -11,6 +16,12 @@ Y se tiene que agregar ese comando al ini.sh
 
 Para ver la lista de servicios que corren con stacks.target 
 ```systemctl list-dependencies stacks.target```
+
+Para levantar todos los servicios de stacks.target
+```systemctl start stacks.target```
+
+Para detenerlos `stop` reiniciarlos `restart`
+
 
 ## Gestion de imagenes en docker para arranque automatico
 ### Paso 1

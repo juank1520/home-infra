@@ -5,19 +5,14 @@ log:
 accessLog: {}
 
 api:
-  dashboard: false
-  insecure: true
+  dashboard: true
+  insecure: false
 
 providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
     network: proxy_net
-  file:
-    filename: /config.yml
-
-ping:
-  entryPoint: web
 
 entryPoints:
   web:
@@ -30,3 +25,9 @@ entryPoints:
   websecure:
     address: ":443"
 
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/cert.crt
+        keyFile: //cert.key
