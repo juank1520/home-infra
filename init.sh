@@ -7,6 +7,7 @@ sudo ln -s /home/juanca/infra/system/stacks.target /etc/systemd/system/stacks.ta
 sudo systemctl enable docker-compose@networks
 sudo systemctl enable docker-compose@pi-hole
 sudo systemctl enable docker-compose@traefik
+sudo systemctl enable docker-compose@qbittorrent
 
 # Enable stacks.target to inicilize when the system starts
 sudo systemctl enable stacks.target

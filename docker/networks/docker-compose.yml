@@ -8,6 +8,7 @@ services:
     networks:
       - dns_net
       - proxy_net
+      - internal_media_net
 
 networks:
   dns_net:
@@ -18,3 +19,6 @@ networks:
     name: proxy_net
     driver: bridge
 
+  internal_media_net:
+    name: internal_media_net
+    driver: bridge
