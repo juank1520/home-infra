@@ -10,3 +10,5 @@ docker/sonarr/downloads/*
 
 docker/radarr/config/*
 docker/radarr/downloads/*
+
+docker/prowlarr/config/*
