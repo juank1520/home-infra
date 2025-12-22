@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    # user: "1000:1000"
+
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Guatemala
+
+    volumes:
+      - ./config/data:/config
+      - ./tvseries:/tv
+      - ./downloadclient-downloads:/downloads
+
+    networks:
+      - internal_media_net
+      - proxy_net
+    restart: unless-stopped
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr.rule=Host(`sonarr.lan`)"
+      - "traefik.http.routers.sonarr.entrypoints=websecure"
+      - "traefik.http.routers.sonarr.tls=true"
+      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
+      - "traefik.docker.network=proxy_net"
+
+
+networks:
+  proxy_net:
+    external: true
+  internal_media_net:
+    external: true

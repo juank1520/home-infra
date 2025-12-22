@@ -8,6 +8,7 @@ sudo systemctl enable docker-compose@networks
 sudo systemctl enable docker-compose@pi-hole
 sudo systemctl enable docker-compose@traefik
 sudo systemctl enable docker-compose@qbittorrent
+sudo systemctl enable docker-compose@sonarr
 
 # Enable stacks.target to inicilize when the system starts
 sudo systemctl enable stacks.target

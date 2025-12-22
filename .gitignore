@@ -3,3 +3,6 @@
 /docker/traefik/logs/traefik.log
 docker/qbittorrent/config/*
 docker/qbittorrent/downloads/*
+
+docker/sonarr/config/*
+docker/sonarr/downloads/*
