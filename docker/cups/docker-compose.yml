@@ -1,0 +1,22 @@
+version: "3.9"
+services:
+  cups:
+    image: ydkn/cups
+    container_name: cups
+    restart: unless-stopped
+
+    ports:
+      - 631:631
+
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+
+    volumes:
+      - ./config/data:/etc/cups
+      - ./config/cupsd.conf:/etc/cups/cupsd.conf
+
+    environment:
+      - ADMIN_PASSWORD=admin
+      - CUPS_SERVER="192.168.1.144:631"
+
+

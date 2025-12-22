@@ -14,3 +14,6 @@ docker/radarr/downloads/*
 docker/prowlarr/config/*
 
 docker/jellyfin/config/*
+
+docker/cups/config/data/*
+
