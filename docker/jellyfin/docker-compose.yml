@@ -1,0 +1,41 @@
+version: "3.9"
+services:
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+#    user: "1000:1000"
+
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Guatemala
+      - JELLYFIN_PublishedServerUrl=https://jellyfin.lan
+    volumes:
+      - ./config/data:/config
+      - /tvseries:/data/tvshows
+      - /movies:/data/movies
+
+    networks:
+      - proxy_net
+
+    labels:
+      - "traefik.enable=true"
+
+      # HTTP JUST FOR TVs IN THE IP WHITE LIST
+      - "traefik.http.routers.jellyfin-http.rule=Host(`jellyfin.lan`)"
+      - "traefik.http.routers.jellyfin-http.entrypoints=web"
+
+      # HTTPS FOR ALL OTHER DEVICES
+      - "traefik.http.routers.jellyfin-https.rule=Host(`jellyfin.lan`)"
+      - "traefik.http.routers.jellyfin-https.tls=true"
+      - "traefik.http.routers.jellyfin-https.entrypoints=websecure"
+
+
+      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+      - "traefik.docker.network=proxy_net"
+
+    restart: unless-stopped
+
+networks:
+  proxy_net:
+    external: true

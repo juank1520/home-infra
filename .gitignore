@@ -13,4 +13,4 @@ docker/radarr/downloads/*
 
 docker/prowlarr/config/*
 
-docker/jellyfin/*
+docker/jellyfin/config/*
