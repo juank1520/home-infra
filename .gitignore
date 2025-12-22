@@ -6,3 +6,7 @@ docker/qbittorrent/downloads/*
 
 docker/sonarr/config/*
 docker/sonarr/downloads/*
+
+
+docker/radarr/config/*
+docker/radarr/downloads/*

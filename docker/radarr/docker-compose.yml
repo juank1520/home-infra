@@ -1,0 +1,36 @@
+version: "3.9"
+services:
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+#    user: "1000:1000"
+
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Guatemala
+
+    volumes:
+      - ./config/data:/config
+      - ./downloads:/downloads
+      - ./movies:/movies
+
+    networks:
+      - internal_media_net
+      - proxy_net
+
+    restart: unless-stopped
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr.rule=Host(`radarr.lan`)"
+      - "traefik.http.routers.radarr.entrypoints=websecure"
+      - "traefik.http.routers.radarr.tls=true"
+      - "traefik.http.services.radarr.loadbalancer.server.port=7878"
+      - "traefik.docker.network=proxy_net"
+
+networks:
+  proxy_net:
+    external: true
+  internal_media_net:
+    external: true
