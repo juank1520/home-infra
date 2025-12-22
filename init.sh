@@ -12,6 +12,6 @@ sudo systemctl enable docker-compose@sonarr
 sudo systemctl enable docker-compose@radarr
 sudo systemctl enable docker-compose@prowlarr
 sudo systemctl enable docker-compose@jellyfin
-
+sudo systemctl enable docker-compose@cups
 # Enable stacks.target to inicilize when the system starts
 sudo systemctl enable stacks.target

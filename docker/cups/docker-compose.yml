@@ -14,6 +14,8 @@ services:
     volumes:
       - ./config/data:/etc/cups
       - ./config/cupsd.conf:/etc/cups/cupsd.conf
+      - ./config/printers.conf.O:/etc/cups/printers.conf.O
+      - ./config/printers.conf:/etc/cups/printers.conf
 
     environment:
       - ADMIN_PASSWORD=admin
