@@ -1,17 +1,5 @@
-# Create virtual links to handle docker inicialization with systemctl
-sudo ln -s /home/juanca/infra/system/docker-compose@.service /etc/systemd/system/docker-compose@.service
-sudo ln -s /home/juanca/infra/system/stacks.target /etc/systemd/system/stacks.target
 
+./scripts/github-config.sh
+./scripts/install_docker.sh
+./scripts/docker_services.sh
 
-# Link docker services into stack.target docker-compose@DOCKER-FILE-NAME
-sudo systemctl enable docker-compose@networks
-sudo systemctl enable docker-compose@pi-hole
-sudo systemctl enable docker-compose@traefik
-sudo systemctl enable docker-compose@qbittorrent
-sudo systemctl enable docker-compose@sonarr
-sudo systemctl enable docker-compose@radarr
-sudo systemctl enable docker-compose@prowlarr
-sudo systemctl enable docker-compose@jellyfin
-sudo systemctl enable docker-compose@cups
-# Enable stacks.target to inicilize when the system starts
-sudo systemctl enable stacks.target

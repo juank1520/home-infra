@@ -1,0 +1,17 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      optional: false
+      dhcp4: false
+      addresses:
+        - 192.168.1.144/24
+      routes:
+        - to: default
+          via: 192.168.1.1
+      nameservers:
+        search: []
+        addresses:
+          - 8.8.8.8
+          - 1.1.1.1

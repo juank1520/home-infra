@@ -1,3 +1,11 @@
+## Primeros pasos
+1. Instalar Ubuntu server.
+2. Deshabilitar DHCP, asignar ip estatico y dehabilitar wifi en Netplan. ```cp system/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml```
+3. Ejecutar el init.sh. ```./init.sh```
+4. Agregar la llave SSH generada en el init.sh a Github para poder clonar el repositiorio
+5. Cumplir con el assestment de seguridad de init.sh
+6. De ser necesario correr nuevamente el assestment de seguridad ```./scripts/security-assestment.sh```
+7. Clonar el repositorio `home-infra` ```git clone git@github.com:juank1520/home-infra.git```
 
 ## Networks
 Existen dos redes
