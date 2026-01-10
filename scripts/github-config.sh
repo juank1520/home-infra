@@ -1,3 +1,7 @@
+#!/bin/sh
+set -e
+
+
 KEY_NAME="id_ed25519_github"
 KEY_PATH="$HOME/.ssh/$KEY_NAME"
 EMAIL="jcgarcia1520@gmail.com"

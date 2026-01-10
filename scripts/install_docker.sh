@@ -1,6 +1,7 @@
 #!/bin/sh
-
 set -e
+
+
 echo "Verifying if Docker is installed..."
 
 if command -v docker >/dev/null 2>&1; then
