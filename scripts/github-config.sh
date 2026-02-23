@@ -20,6 +20,7 @@ fi
 if [ -z "$SSH_AUTH_SOCK" ]; then
     echo "Iniciando ssh-agent..."
     eval "$(ssh-agent -s)"
+    ssh-add ~/.ssh/id_ed25519_github
 fi
 
 echo "===== Save this SSH key into your github authentications keys ======"
