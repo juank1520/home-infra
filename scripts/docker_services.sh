@@ -21,4 +21,7 @@ if command -v docker >/dev/null 2>&1; then
   sudo systemctl enable docker-compose@prowlarr
   sudo systemctl enable docker-compose@jellyfin
   sudo systemctl enable docker-compose@cups
+
+  # Start all stacks.target
+  systemctl start stacks.target
 fi
