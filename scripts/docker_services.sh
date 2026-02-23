@@ -1,13 +1,12 @@
 #!/bin/sh
 set -e
 
-
 echo "Validatin if socker is insalled"
 if command -v docker >/dev/null 2>&1; then
 
   # Create virtual links to handle docker inicialization with systemctl
-  sudo ln -s /home/juanca/infra/system/docker-compose@.service /etc/systemd/system/docker-compose@.service
-  sudo ln -s /home/juanca/infra/system/stacks.target /etc/systemd/system/stacks.target
+  sudo ln -sf ${HOME}/home-infra/system/docker-compose@.service /etc/systemd/system/docker-compose@.service
+  sudo ln -sf ${HOME}/home-infra/system/stacks.target /etc/systemd/system/stacks.target
 
   # Enable stacks.target to inicilize when the system starts
   sudo systemctl enable stacks.target
