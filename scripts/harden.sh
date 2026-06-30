@@ -95,10 +95,14 @@ if [ "$CURRENT_PORT" != "22" ]; then
     ok "SSH not using default port (port $CURRENT_PORT)"
 else
     sshd_set "Port" "$SSH_PORT"
+    # Ubuntu 26.04 uses socket activation — ssh.socket controls the listening port,
+    # not sshd_config. Disable it so sshd manages its own socket.
+    systemctl stop ssh.socket    2>/dev/null || true
+    systemctl disable ssh.socket 2>/dev/null || true
     systemctl restart ssh
     ACTUAL_PORT=$(ss -tlnp | awk '/sshd/ {split($4,a,":"); print a[length(a)]}' | sort -u)
     if [ "$ACTUAL_PORT" != "22" ]; then
-        fixed "SSH port changed to $SSH_PORT"
+        fixed "SSH port changed to $SSH_PORT (socket activation disabled)"
     else
         fail "SSH port" "Could not change port. Edit $SSHD_CONFIG manually."
     fi
