@@ -27,6 +27,9 @@ require_root() {
 
 require_root
 
+# OpenSSH 10.2+ on Ubuntu 26.04 requires this directory for sshd -T
+mkdir -p /run/sshd
+
 echo "=== Security System assestment ==="
 echo
 
@@ -119,7 +122,7 @@ else
        "Run command: ufw default allow outgoing"
 fi
 
-if ufw status | grep -q "22/tcp"; then
+if ufw status | grep -qE "^22[/ ]"; then
   fail "Puerto 22 is open" \
        "Delet rule running the command: ufw delete allow 22"
 else

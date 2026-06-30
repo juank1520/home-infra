@@ -55,6 +55,37 @@ echo "=== Security Hardening - Ubuntu 26.04 (homeserver) ==="
 echo
 
 # ---------------------------------------------------------
+# Users and Sudo
+# ---------------------------------------------------------
+echo "--- Users & Sudo ---"
+
+NOPASSWD_FILES=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null || true)
+if [ -z "$NOPASSWD_FILES" ]; then
+    ok "No NOPASSWD sudo rules"
+else
+    ALL_FIXED=1
+    for f in $NOPASSWD_FILES; do
+        cp "$f" "${f}.bak"
+        sed -i 's/NOPASSWD://g' "$f"
+        if visudo -cf "$f" >/dev/null 2>&1; then
+            rm "${f}.bak"
+        else
+            cp "${f}.bak" "$f"
+            rm "${f}.bak"
+            ALL_FIXED=0
+            fail "NOPASSWD in $(basename $f)" "Fix manually: visudo -f $f"
+        fi
+    done
+    if [ "$ALL_FIXED" -eq 1 ]; then
+        NOPASSWD_CHECK=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null || true)
+        [ -z "$NOPASSWD_CHECK" ] && fixed "NOPASSWD removed from sudo rules" \
+                                 || fail "NOPASSWD sudo rules" "Remove manually with visudo"
+    fi
+fi
+
+echo
+
+# ---------------------------------------------------------
 # SSH
 # ---------------------------------------------------------
 echo "--- SSH ---"
@@ -64,9 +95,9 @@ if [ "$CURRENT_PORT" != "22" ]; then
     ok "SSH not using default port (port $CURRENT_PORT)"
 else
     sshd_set "Port" "$SSH_PORT"
-    systemctl reload ssh
-    CURRENT_PORT=$(sshd -T 2>/dev/null | awk '$1=="port" {print $2}')
-    if [ "$CURRENT_PORT" != "22" ]; then
+    systemctl restart ssh
+    ACTUAL_PORT=$(ss -tlnp | awk '/sshd/ {split($4,a,":"); print a[length(a)]}' | sort -u)
+    if [ "$ACTUAL_PORT" != "22" ]; then
         fixed "SSH port changed to $SSH_PORT"
     else
         fail "SSH port" "Could not change port. Edit $SSHD_CONFIG manually."
@@ -173,19 +204,18 @@ echo
 # ---------------------------------------------------------
 echo "--- Network ---"
 
-if ip link show wlan0 2>/dev/null | grep -q " UP "; then
-    if rfkill block wifi 2>/dev/null; then
-        if ! ip link show wlan0 2>/dev/null | grep -q " UP "; then
-            fixed "Wi-Fi blocked via rfkill"
-        else
-            warn "Wi-Fi still UP after rfkill" \
-                 "Apply netplan: sudo cp system/50-cloud-init.yaml /etc/netplan/ && sudo netplan apply"
-        fi
+WIFI_BLOCKED=$(rfkill list wifi 2>/dev/null | grep -c "Soft blocked: yes" || true)
+if [ "$WIFI_BLOCKED" -gt 0 ] && ! ip link show wlan0 2>/dev/null | grep -qE "\bUP\b"; then
+    ok "Wi-Fi disabled"
+else
+    rfkill block wifi 2>/dev/null
+    ip link set wlan0 down 2>/dev/null || true
+    WIFI_BLOCKED=$(rfkill list wifi 2>/dev/null | grep -c "Soft blocked: yes" || true)
+    if [ "$WIFI_BLOCKED" -gt 0 ]; then
+        fixed "Wi-Fi blocked (not persistent — apply netplan for permanent disable)"
     else
         fail "Wi-Fi active" "Run: sudo cp system/50-cloud-init.yaml /etc/netplan/ && sudo netplan apply"
     fi
-else
-    ok "Wi-Fi disabled"
 fi
 
 echo
