@@ -11,7 +11,8 @@ if [ -z "$GITHUB_PAT" ]; then
 fi
 
 if [ -d "$REPO_DIR" ]; then
-    echo "Repository already exists at $REPO_DIR"
+    echo "Repository already exists at $REPO_DIR, pulling latest changes..."
+    git -C "$REPO_DIR" pull
 else
     echo "Cloning repository..."
     git clone "https://$GITHUB_PAT@github.com/$REPO.git" "$REPO_DIR"
