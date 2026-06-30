@@ -17,3 +17,5 @@ docker/jellyfin/config/*
 
 docker/cups/config/data/*
 
+recommendation.md
+security.md

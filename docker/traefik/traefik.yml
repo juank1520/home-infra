@@ -4,10 +4,6 @@ log:
   format: json
 accessLog: {}
 
-api:
-  dashboard: false
-  insecure: true
-
 providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
