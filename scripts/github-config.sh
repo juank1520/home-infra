@@ -19,7 +19,19 @@ fi
 if [ -z "$SSH_AUTH_SOCK" ]; then
     echo "Starting ssh-agent..."
     eval "$(ssh-agent -s)"
-    ssh-add "$KEY_PATH"
+fi
+ssh-add "$KEY_PATH"
+
+SSH_CONFIG="$HOME/.ssh/config"
+if ! grep -q "Host github.com" "$SSH_CONFIG" 2>/dev/null; then
+    echo "Configuring SSH client for GitHub..."
+    mkdir -p "$HOME/.ssh"
+    cat >> "$SSH_CONFIG" << EOF
+Host github.com
+    IdentityFile $KEY_PATH
+    User git
+EOF
+    chmod 600 "$SSH_CONFIG"
 fi
 
 git config --global user.email "$EMAIL"
