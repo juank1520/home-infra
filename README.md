@@ -1,12 +1,19 @@
 ## Primeros pasos
-1. Instalar Ubuntu server. Testeado en Raspberry pi 4
-2. Conectarse a la terminar de la rasp.
-3. Copiar en la rasp el archivo ```./scripts/github-config.sh``` y seguir los pasos para poder conectarse a github y clonar el repo.
-4. Clonar el repositorio `home-infra` ```git clone git@github.com:juank1520/home-infra.git```
-5. Deshabilitar DHCP, asignar ip estatico y dehabilitar wifi en Netplan. ```cp system/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml```
-6. Ejecutar el init.sh. ```./init.sh```
-7. Cumplir con el assestment de seguridad de init.sh
-8. Correr las veces que sean necesarias el assestment de seguridad ```./scripts/security-assestment.sh``` hasta completar todas la validaciones.
+
+### Preparacion (desde tu computadora personal)
+1. Flashear Ubuntu Server en la SD con [Raspberry Pi Imager](https://www.raspberrypi.com/software/). En las opciones avanzadas configurar:
+   - Hostname: `homeserver`
+   - Habilitar SSH con tu llave publica personal
+   - Usuario y contraseña
+2. Generar el comando de instalación con la CLI de `gh` (requiere tener `gh` instalado y autenticado):
+   ```sh
+   ./scripts/generate-install-cmd.sh
+   ```
+
+### Instalacion (desde la rasp por SSH)
+1. Conectarse a la rasp: ```ssh juanca@homeserver.local```
+2. Pegar y ejecutar el comando generado por `generate-install-cmd.sh`
+   - Esto clona el repositorio en la rasp y ejecuta el `init.sh` automáticamente
 
 ## Networks
 Existen dos redes
