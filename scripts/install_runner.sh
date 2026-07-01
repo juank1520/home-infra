@@ -6,6 +6,7 @@ REPO_DIR="${HOME}/home-infra"
 ADMIN_USER="$(whoami)"
 RUNNER_USER="deploy-bot"
 RUNNER_HOME="/opt/actions-runner"
+FETCH_SCRIPT="/usr/local/bin/home-infra-fetch.sh"
 DEPLOY_SCRIPT="/usr/local/bin/home-infra-deploy.sh"
 SUDOERS_FILE="/etc/sudoers.d/deploy-bot"
 
@@ -31,15 +32,28 @@ else
     sudo useradd --system --no-create-home --shell /usr/sbin/nologin "$RUNNER_USER"
 fi
 
+# Kept as a separate, fixed, no-argument script (rather than inlining the git
+# commands in sudoers) because the repo URL contains ':' — a sudoers grammar
+# special character that would otherwise need fragile escaping there.
+echo "Installing fixed fetch script at $FETCH_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
+FETCH_SCRIPT_TMP=$(mktemp)
+cat > "$FETCH_SCRIPT_TMP" << EOF
+#!/bin/sh
+set -e
+REPO_DIR="$REPO_DIR"
+REPO_URL="https://github.com/$REPO.git"
+git -C "\$REPO_DIR" fetch "\$REPO_URL" main
+git -C "\$REPO_DIR" reset --hard FETCH_HEAD
+EOF
+sudo install -m 0755 -o root -g root "$FETCH_SCRIPT_TMP" "$FETCH_SCRIPT"
+rm -f "$FETCH_SCRIPT_TMP"
+
 echo "Installing fixed deploy script at $DEPLOY_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
 DEPLOY_SCRIPT_TMP=$(mktemp)
 cat > "$DEPLOY_SCRIPT_TMP" << EOF
 #!/bin/sh
 set -e
-REPO_DIR="$REPO_DIR"
-REPO_URL="https://github.com/$REPO.git"
-sudo -u $ADMIN_USER git -C "\$REPO_DIR" fetch "\$REPO_URL" main
-sudo -u $ADMIN_USER git -C "\$REPO_DIR" reset --hard FETCH_HEAD
+sudo -u $ADMIN_USER $FETCH_SCRIPT
 sudo systemctl restart stacks.target
 EOF
 sudo install -m 0755 -o root -g root "$DEPLOY_SCRIPT_TMP" "$DEPLOY_SCRIPT"
@@ -48,12 +62,12 @@ rm -f "$DEPLOY_SCRIPT_TMP"
 # git runs as $ADMIN_USER (the existing owner of $REPO_DIR) instead of root,
 # so it never touches the repo with different ownership than what already
 # owns it — no "dubious ownership" exception needed anywhere. Root is only
-# used for the final restart. Both grants are exact-match, no wildcards.
+# used for the final restart. Both grants are exact bare script paths, no
+# arguments and no special characters, so sudoers needs no escaping at all.
 echo "Installing scoped sudoers rule for $RUNNER_USER..."
 SUDOERS_TMP=$(mktemp)
 {
-    printf '%s ALL=(%s) NOPASSWD: /usr/bin/git -C %s fetch https://github.com/%s.git main, /usr/bin/git -C %s reset --hard FETCH_HEAD\n' \
-        "$RUNNER_USER" "$ADMIN_USER" "$REPO_DIR" "$REPO" "$REPO_DIR"
+    printf '%s ALL=(%s) NOPASSWD: %s\n' "$RUNNER_USER" "$ADMIN_USER" "$FETCH_SCRIPT"
     printf '%s ALL=(root) NOPASSWD: /usr/bin/systemctl restart stacks.target\n' "$RUNNER_USER"
 } > "$SUDOERS_TMP"
 if sudo visudo -cf "$SUDOERS_TMP" >/dev/null 2>&1; then

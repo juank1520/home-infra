@@ -66,8 +66,7 @@ echo "--- Users & Sudo ---"
 # so it's excluded from the sweep and checked below.
 DEPLOY_BOT_SUDOERS="/etc/sudoers.d/deploy-bot"
 ADMIN_USER="${SUDO_USER:-$(logname 2>/dev/null)}"
-REPO_DIR="$(getent passwd "$ADMIN_USER" | cut -d: -f6)/home-infra"
-DEPLOY_BOT_RULE="deploy-bot ALL=($ADMIN_USER) NOPASSWD: /usr/bin/git -C $REPO_DIR fetch https://github.com/juank1520/home-infra.git main, /usr/bin/git -C $REPO_DIR reset --hard FETCH_HEAD
+DEPLOY_BOT_RULE="deploy-bot ALL=($ADMIN_USER) NOPASSWD: /usr/local/bin/home-infra-fetch.sh
 deploy-bot ALL=(root) NOPASSWD: /usr/bin/systemctl restart stacks.target"
 
 NOPASSWD_FILES=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -vF "$DEPLOY_BOT_SUDOERS" || true)
