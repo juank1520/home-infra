@@ -59,9 +59,16 @@ echo
 # ---------------------------------------------------------
 echo "--- Users & Sudo ---"
 
-NOPASSWD_FILES=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null || true)
+# deploy-bot's rule is a reviewed exception: it grants NOPASSWD for exactly one
+# fixed, root-owned script (no args), used by the self-hosted Actions runner to
+# trigger deploys. Stripping it here would silently break auto-deploy on every
+# harden.sh run, so it's excluded from the sweep and checked separately below.
+DEPLOY_BOT_SUDOERS="/etc/sudoers.d/deploy-bot"
+DEPLOY_BOT_RULE="deploy-bot ALL=(root) NOPASSWD: /usr/local/bin/home-infra-deploy.sh"
+
+NOPASSWD_FILES=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -vF "$DEPLOY_BOT_SUDOERS" || true)
 if [ -z "$NOPASSWD_FILES" ]; then
-    ok "No NOPASSWD sudo rules"
+    ok "No NOPASSWD sudo rules (excluding reviewed deploy-bot exception)"
 else
     ALL_FIXED=1
     for f in $NOPASSWD_FILES; do
@@ -77,10 +84,20 @@ else
         fi
     done
     if [ "$ALL_FIXED" -eq 1 ]; then
-        NOPASSWD_CHECK=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null || true)
+        NOPASSWD_CHECK=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -vF "$DEPLOY_BOT_SUDOERS" || true)
         [ -z "$NOPASSWD_CHECK" ] && fixed "NOPASSWD removed from sudo rules" \
                                  || fail "NOPASSWD sudo rules" "Remove manually with visudo"
     fi
+fi
+
+if [ -f "$DEPLOY_BOT_SUDOERS" ]; then
+    if [ "$(cat "$DEPLOY_BOT_SUDOERS")" = "$DEPLOY_BOT_RULE" ]; then
+        ok "deploy-bot sudoers rule scoped exactly to home-infra-deploy.sh"
+    else
+        fail "deploy-bot sudoers rule" "Content differs from expected — review: visudo -f $DEPLOY_BOT_SUDOERS"
+    fi
+else
+    warn "deploy-bot sudoers rule not present" "Run ./scripts/install_runner.sh to enable auto-deploy"
 fi
 
 echo

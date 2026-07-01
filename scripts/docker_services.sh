@@ -4,9 +4,13 @@ set -e
 echo "Validatin if socker is insalled"
 if command -v docker >/dev/null 2>&1; then
 
-  # Create virtual links to handle docker inicialization with systemctl
-  sudo ln -sf ${HOME}/home-infra/system/docker-compose@.service /etc/systemd/system/docker-compose@.service
-  sudo ln -sf ${HOME}/home-infra/system/stacks.target /etc/systemd/system/stacks.target
+  REPO_DIR="${HOME}/home-infra"
+
+  # Render docker-compose@.service with the real repo path (WorkingDirectory can't use $HOME)
+  sed "s#__REPO_DIR__#${REPO_DIR}#g" "${REPO_DIR}/system/docker-compose@.service" | sudo tee /etc/systemd/system/docker-compose@.service >/dev/null
+  sudo ln -sf ${REPO_DIR}/system/stacks.target /etc/systemd/system/stacks.target
+
+  sudo systemctl daemon-reload
 
   # Enable stacks.target to inicilize when the system starts
   sudo systemctl enable stacks.target

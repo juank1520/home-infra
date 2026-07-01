@@ -1,0 +1,25 @@
+name: Deploy to homelab
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Pull latest and restart stacks
+        run: sudo /usr/local/bin/home-infra-deploy.sh
+
+      - name: Notify deploy result
+        if: always()
+        run: python3 "$REPO_DIR/scripts/notify_deploy.py"
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          DEPLOY_STATUS: ${{ job.status }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
