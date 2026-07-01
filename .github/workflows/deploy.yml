@@ -12,7 +12,15 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Pull latest and restart stacks
-        run: /usr/local/bin/home-infra-deploy.sh
+        id: deploy
+        run: |
+          OUTPUT=$(/usr/local/bin/home-infra-deploy.sh)
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -q "MANUAL_STEP_NEEDED=1"; then
+            echo "manual_step_needed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "manual_step_needed=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Notify deploy result
         if: always()
@@ -23,3 +31,4 @@ jobs:
           DEPLOY_STATUS: ${{ job.status }}
           COMMIT_SHA: ${{ github.sha }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
+          MANUAL_STEP_NEEDED: ${{ steps.deploy.outputs.manual_step_needed }}

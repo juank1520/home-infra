@@ -27,13 +27,22 @@ Cómo funciona: un self-hosted GitHub Actions runner corre en la rasp como usuar
 escucha eventos `push` sobre `main` — como este repo es público pero sin colaboradores externos,
 ningún fork puede disparar ese evento, así que no hay vector de ataque vía Pull Request. El
 workflow no usa `actions/checkout` ni Actions de terceros: ejecuta directamente (sin `sudo`) un
-script fijo y no editable (`/usr/local/bin/home-infra-deploy.sh`, root:root) que hace `git fetch` +
-`reset --hard` sobre el clon ya existente. El `git` nunca corre como root: corre como tu propio
-usuario (el dueño real del clon), vía un sudoers acotado a exactamente esos dos comandos — así
-nunca hay descalce de dueño/ejecutor. El único paso que sí corre como root es el reinicio final,
-también acotado a exactamente `systemctl restart stacks.target`, nada más (ver
-`/etc/sudoers.d/deploy-bot`, verificado en cada corrida de `harden.sh`). Al terminar, se manda un
-correo de notificación (éxito o falla) para detectar cualquier deploy inesperado.
+script fijo y no editable (`/usr/local/bin/home-infra-deploy.sh`, root:root). El `git fetch` +
+`reset --hard` sobre el clon ya existente nunca corre como root: corre como tu propio usuario (el
+dueño real del clon), vía un sudoers acotado a ese único script. Lo que sí corre como root son dos
+comandos fijos, sin argumentos: `home-infra-sync-units.sh` (regenera la unit
+`docker-compose@.service` desde la plantilla del repo y habilita un `docker-compose@<stack>` por
+cada carpeta nueva en `docker/`) y `systemctl restart stacks.target`. Deliberadamente **no**
+tocamos nada más (SSH, firewall, usuarios, sudoers) desde el pipeline automático — esos cambios
+siguen requiriendo entrar por SSH y correr `init.sh`/`harden.sh` a mano (ver `/etc/sudoers.d/deploy-bot`,
+verificado en cada corrida de `harden.sh`).
+
+Si un push modifica `init.sh` o cualquier `scripts/*.sh`, el deploy detecta el archivo cambiado
+(vía `git diff` entre el commit viejo y el nuevo) y el correo de notificación avisa que hace falta
+aplicar ese cambio a mano — el resto del push (docker-compose, configs, etc.) sí se aplica solo.
+
+Para desactivar temporalmente un stack sin borrarlo del repo, agrega un archivo `.disabled` dentro
+de su carpeta (ej. `docker/portainer/.disabled`) — `home-infra-sync-units.sh` lo salta.
 
 ### Setup del runner (una sola vez)
 Si ya respondiste que si en `generate-install-cmd.sh`, este paso ya quedo hecho — `init.sh` corre

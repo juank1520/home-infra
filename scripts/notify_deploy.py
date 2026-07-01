@@ -20,15 +20,24 @@ def main():
     status = os.environ.get("DEPLOY_STATUS", "unknown")
     commit_sha = os.environ.get("COMMIT_SHA", "unknown")
     commit_msg = os.environ.get("COMMIT_MSG", "")
+    manual_step_needed = os.environ.get("MANUAL_STEP_NEEDED") == "true"
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     subject = f"[home-infra] deploy {status} — {commit_sha[:7]}"
+    if manual_step_needed:
+        subject += " (accion manual requerida)"
     body = (
         f"Status:  {status}\n"
         f"Commit:  {commit_sha}\n"
         f"Message: {commit_msg}\n"
         f"When:    {now}\n"
     )
+    if manual_step_needed:
+        body += (
+            "\nEste push modifico init.sh o algun scripts/*.sh. Esos cambios NO se\n"
+            "aplican solos -- entra por SSH a la rasp y corre ./init.sh (o el script\n"
+            "puntual que cambio) manualmente.\n"
+        )
 
     msg = MIMEText(body)
     msg["Subject"] = subject

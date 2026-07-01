@@ -7,6 +7,7 @@ ADMIN_USER="$(whoami)"
 RUNNER_USER="deploy-bot"
 RUNNER_HOME="/opt/actions-runner"
 FETCH_SCRIPT="/usr/local/bin/home-infra-fetch.sh"
+SYNC_UNITS_SCRIPT="/usr/local/bin/home-infra-sync-units.sh"
 DEPLOY_SCRIPT="/usr/local/bin/home-infra-deploy.sh"
 SUDOERS_FILE="/etc/sudoers.d/deploy-bot"
 
@@ -35,6 +36,9 @@ fi
 # Kept as a separate, fixed, no-argument script (rather than inlining the git
 # commands in sudoers) because the repo URL contains ':' — a sudoers grammar
 # special character that would otherwise need fragile escaping there.
+# Prints the list of files changed by this fetch, so the deploy script can
+# tell whether anything outside its own reach (scripts/*.sh, init.sh) needs a
+# manual re-run.
 echo "Installing fixed fetch script at $FETCH_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
 FETCH_SCRIPT_TMP=$(mktemp)
 cat > "$FETCH_SCRIPT_TMP" << EOF
@@ -42,32 +46,64 @@ cat > "$FETCH_SCRIPT_TMP" << EOF
 set -e
 REPO_DIR="$REPO_DIR"
 REPO_URL="https://github.com/$REPO.git"
+OLD_SHA=\$(git -C "\$REPO_DIR" rev-parse HEAD)
 git -C "\$REPO_DIR" fetch "\$REPO_URL" main
 git -C "\$REPO_DIR" reset --hard FETCH_HEAD
+git -C "\$REPO_DIR" diff --name-only "\$OLD_SHA" HEAD
 EOF
 sudo install -m 0755 -o root -g root "$FETCH_SCRIPT_TMP" "$FETCH_SCRIPT"
 rm -f "$FETCH_SCRIPT_TMP"
+
+# Regenerates the docker-compose@.service unit from the repo's template and
+# enables a unit for every directory under docker/ — so editing an existing
+# stack or adding a brand new one applies automatically. Deliberately does
+# NOT touch anything outside systemd units for docker-compose@* (no SSH,
+# firewall, users, or sudoers) — that's the line we chose not to cross.
+echo "Installing fixed unit-sync script at $SYNC_UNITS_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
+SYNC_UNITS_TMP=$(mktemp)
+cat > "$SYNC_UNITS_TMP" << EOF
+#!/bin/sh
+set -e
+REPO_DIR="$REPO_DIR"
+sed "s#__REPO_DIR__#\${REPO_DIR}#g" "\${REPO_DIR}/system/docker-compose@.service" > /etc/systemd/system/docker-compose@.service
+ln -sf "\${REPO_DIR}/system/stacks.target" /etc/systemd/system/stacks.target
+systemctl daemon-reload
+systemctl enable stacks.target
+for dir in "\${REPO_DIR}"/docker/*/; do
+    [ -d "\$dir" ] || continue
+    [ -f "\${dir}.disabled" ] && continue
+    systemctl enable "docker-compose@\$(basename "\$dir")"
+done
+EOF
+sudo install -m 0755 -o root -g root "$SYNC_UNITS_TMP" "$SYNC_UNITS_SCRIPT"
+rm -f "$SYNC_UNITS_TMP"
 
 echo "Installing fixed deploy script at $DEPLOY_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
 DEPLOY_SCRIPT_TMP=$(mktemp)
 cat > "$DEPLOY_SCRIPT_TMP" << EOF
 #!/bin/sh
 set -e
-sudo -u $ADMIN_USER $FETCH_SCRIPT
+CHANGED=\$(sudo -u $ADMIN_USER $FETCH_SCRIPT)
+echo "\$CHANGED"
+sudo $SYNC_UNITS_SCRIPT
 sudo systemctl restart stacks.target
+if echo "\$CHANGED" | grep -qE '(^|/)init\.sh\$|^scripts/.*\.sh\$'; then
+    echo "MANUAL_STEP_NEEDED=1"
+fi
 EOF
 sudo install -m 0755 -o root -g root "$DEPLOY_SCRIPT_TMP" "$DEPLOY_SCRIPT"
 rm -f "$DEPLOY_SCRIPT_TMP"
 
 # git runs as $ADMIN_USER (the existing owner of $REPO_DIR) instead of root,
 # so it never touches the repo with different ownership than what already
-# owns it — no "dubious ownership" exception needed anywhere. Root is only
-# used for the final restart. Both grants are exact bare script paths, no
-# arguments and no special characters, so sudoers needs no escaping at all.
+# owns it — no "dubious ownership" exception needed anywhere. Everything that
+# runs as root is a fixed, bare script path (no arguments, no wildcards), so
+# sudoers needs no escaping and deploy-bot can't widen what gets executed.
 echo "Installing scoped sudoers rule for $RUNNER_USER..."
 SUDOERS_TMP=$(mktemp)
 {
     printf '%s ALL=(%s) NOPASSWD: %s\n' "$RUNNER_USER" "$ADMIN_USER" "$FETCH_SCRIPT"
+    printf '%s ALL=(root) NOPASSWD: %s\n' "$RUNNER_USER" "$SYNC_UNITS_SCRIPT"
     printf '%s ALL=(root) NOPASSWD: /usr/bin/systemctl restart stacks.target\n' "$RUNNER_USER"
 } > "$SUDOERS_TMP"
 if sudo visudo -cf "$SUDOERS_TMP" >/dev/null 2>&1; then

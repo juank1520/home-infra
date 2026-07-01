@@ -59,14 +59,17 @@ echo
 # ---------------------------------------------------------
 echo "--- Users & Sudo ---"
 
-# deploy-bot's rule is a reviewed exception: two fixed NOPASSWD commands used
-# by the self-hosted Actions runner to deploy — git fetch/reset runs as the
-# repo's actual owner (never root), and only the final restart runs as root.
-# Stripping this here would silently break auto-deploy on every harden.sh run,
-# so it's excluded from the sweep and checked below.
+# deploy-bot's rule is a reviewed exception: three fixed NOPASSWD commands
+# used by the self-hosted Actions runner to deploy — git fetch/reset runs as
+# the repo's actual owner (never root); regenerating docker-compose@.service
+# and enabling docker-compose@<stack> units is scoped to one fixed script
+# (never touches SSH/firewall/users/sudoers); and the final restart is a bare
+# systemctl command. Stripping this here would silently break auto-deploy on
+# every harden.sh run, so it's excluded from the sweep and checked below.
 DEPLOY_BOT_SUDOERS="/etc/sudoers.d/deploy-bot"
 ADMIN_USER="${SUDO_USER:-$(logname 2>/dev/null)}"
 DEPLOY_BOT_RULE="deploy-bot ALL=($ADMIN_USER) NOPASSWD: /usr/local/bin/home-infra-fetch.sh
+deploy-bot ALL=(root) NOPASSWD: /usr/local/bin/home-infra-sync-units.sh
 deploy-bot ALL=(root) NOPASSWD: /usr/bin/systemctl restart stacks.target"
 
 NOPASSWD_FILES=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -vF "$DEPLOY_BOT_SUDOERS" || true)
@@ -95,7 +98,7 @@ fi
 
 if [ -f "$DEPLOY_BOT_SUDOERS" ]; then
     if [ "$(cat "$DEPLOY_BOT_SUDOERS")" = "$DEPLOY_BOT_RULE" ]; then
-        ok "deploy-bot sudoers rule scoped exactly to git (as $ADMIN_USER) + systemctl restart"
+        ok "deploy-bot sudoers rule scoped exactly to git (as $ADMIN_USER) + unit sync + systemctl restart"
     else
         fail "deploy-bot sudoers rule" "Content differs from expected — review: visudo -f $DEPLOY_BOT_SUDOERS"
     fi
