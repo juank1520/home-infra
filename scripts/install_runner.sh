@@ -3,6 +3,7 @@ set -e
 
 REPO="juank1520/home-infra"
 REPO_DIR="${HOME}/home-infra"
+ADMIN_USER="$(whoami)"
 RUNNER_USER="deploy-bot"
 RUNNER_HOME="/opt/actions-runner"
 DEPLOY_SCRIPT="/usr/local/bin/home-infra-deploy.sh"
@@ -36,16 +37,25 @@ cat > "$DEPLOY_SCRIPT_TMP" << EOF
 #!/bin/sh
 set -e
 REPO_DIR="$REPO_DIR"
-git -C "\$REPO_DIR" fetch origin main
-git -C "\$REPO_DIR" reset --hard origin/main
-systemctl restart stacks.target
+REPO_URL="https://github.com/$REPO.git"
+sudo -u $ADMIN_USER git -C "\$REPO_DIR" fetch "\$REPO_URL" main
+sudo -u $ADMIN_USER git -C "\$REPO_DIR" reset --hard FETCH_HEAD
+sudo systemctl restart stacks.target
 EOF
 sudo install -m 0755 -o root -g root "$DEPLOY_SCRIPT_TMP" "$DEPLOY_SCRIPT"
 rm -f "$DEPLOY_SCRIPT_TMP"
 
+# git runs as $ADMIN_USER (the existing owner of $REPO_DIR) instead of root,
+# so it never touches the repo with different ownership than what already
+# owns it — no "dubious ownership" exception needed anywhere. Root is only
+# used for the final restart. Both grants are exact-match, no wildcards.
 echo "Installing scoped sudoers rule for $RUNNER_USER..."
 SUDOERS_TMP=$(mktemp)
-printf '%s ALL=(root) NOPASSWD: %s\n' "$RUNNER_USER" "$DEPLOY_SCRIPT" > "$SUDOERS_TMP"
+{
+    printf '%s ALL=(%s) NOPASSWD: /usr/bin/git -C %s fetch https://github.com/%s.git main, /usr/bin/git -C %s reset --hard FETCH_HEAD\n' \
+        "$RUNNER_USER" "$ADMIN_USER" "$REPO_DIR" "$REPO" "$REPO_DIR"
+    printf '%s ALL=(root) NOPASSWD: /usr/bin/systemctl restart stacks.target\n' "$RUNNER_USER"
+} > "$SUDOERS_TMP"
 if sudo visudo -cf "$SUDOERS_TMP" >/dev/null 2>&1; then
     sudo install -m 0440 -o root -g root "$SUDOERS_TMP" "$SUDOERS_FILE"
 else

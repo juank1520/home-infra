@@ -26,12 +26,14 @@ Cómo funciona: un self-hosted GitHub Actions runner corre en la rasp como usuar
 `deploy-bot`, sin login y sin privilegios. El workflow (`.github/workflows/deploy.yml`) solo
 escucha eventos `push` sobre `main` — como este repo es público pero sin colaboradores externos,
 ningún fork puede disparar ese evento, así que no hay vector de ataque vía Pull Request. El
-workflow no usa `actions/checkout` ni Actions de terceros: solo ejecuta, vía `sudo`, un script fijo
-y no editable (`/usr/local/bin/home-infra-deploy.sh`, root:root) que hace `git fetch` + `reset
---hard` sobre el clon ya existente y reinicia `stacks.target`. `deploy-bot` tiene sudo acotado
-únicamente a ese comando (ver `/etc/sudoers.d/deploy-bot`, verificado en cada corrida de
-`harden.sh`). Al terminar, se manda un correo de notificación (éxito o falla) para detectar
-cualquier deploy inesperado.
+workflow no usa `actions/checkout` ni Actions de terceros: ejecuta directamente (sin `sudo`) un
+script fijo y no editable (`/usr/local/bin/home-infra-deploy.sh`, root:root) que hace `git fetch` +
+`reset --hard` sobre el clon ya existente. El `git` nunca corre como root: corre como tu propio
+usuario (el dueño real del clon), vía un sudoers acotado a exactamente esos dos comandos — así
+nunca hay descalce de dueño/ejecutor. El único paso que sí corre como root es el reinicio final,
+también acotado a exactamente `systemctl restart stacks.target`, nada más (ver
+`/etc/sudoers.d/deploy-bot`, verificado en cada corrida de `harden.sh`). Al terminar, se manda un
+correo de notificación (éxito o falla) para detectar cualquier deploy inesperado.
 
 ### Setup del runner (una sola vez)
 Si ya respondiste que si en `generate-install-cmd.sh`, este paso ya quedo hecho — `init.sh` corre

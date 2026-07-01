@@ -59,12 +59,16 @@ echo
 # ---------------------------------------------------------
 echo "--- Users & Sudo ---"
 
-# deploy-bot's rule is a reviewed exception: it grants NOPASSWD for exactly one
-# fixed, root-owned script (no args), used by the self-hosted Actions runner to
-# trigger deploys. Stripping it here would silently break auto-deploy on every
-# harden.sh run, so it's excluded from the sweep and checked separately below.
+# deploy-bot's rule is a reviewed exception: two fixed NOPASSWD commands used
+# by the self-hosted Actions runner to deploy — git fetch/reset runs as the
+# repo's actual owner (never root), and only the final restart runs as root.
+# Stripping this here would silently break auto-deploy on every harden.sh run,
+# so it's excluded from the sweep and checked below.
 DEPLOY_BOT_SUDOERS="/etc/sudoers.d/deploy-bot"
-DEPLOY_BOT_RULE="deploy-bot ALL=(root) NOPASSWD: /usr/local/bin/home-infra-deploy.sh"
+ADMIN_USER="${SUDO_USER:-$(logname 2>/dev/null)}"
+REPO_DIR="$(getent passwd "$ADMIN_USER" | cut -d: -f6)/home-infra"
+DEPLOY_BOT_RULE="deploy-bot ALL=($ADMIN_USER) NOPASSWD: /usr/bin/git -C $REPO_DIR fetch https://github.com/juank1520/home-infra.git main, /usr/bin/git -C $REPO_DIR reset --hard FETCH_HEAD
+deploy-bot ALL=(root) NOPASSWD: /usr/bin/systemctl restart stacks.target"
 
 NOPASSWD_FILES=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -vF "$DEPLOY_BOT_SUDOERS" || true)
 if [ -z "$NOPASSWD_FILES" ]; then
@@ -92,7 +96,7 @@ fi
 
 if [ -f "$DEPLOY_BOT_SUDOERS" ]; then
     if [ "$(cat "$DEPLOY_BOT_SUDOERS")" = "$DEPLOY_BOT_RULE" ]; then
-        ok "deploy-bot sudoers rule scoped exactly to home-infra-deploy.sh"
+        ok "deploy-bot sudoers rule scoped exactly to git (as $ADMIN_USER) + systemctl restart"
     else
         fail "deploy-bot sudoers rule" "Content differs from expected — review: visudo -f $DEPLOY_BOT_SUDOERS"
     fi
