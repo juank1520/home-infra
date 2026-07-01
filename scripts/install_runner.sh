@@ -65,14 +65,21 @@ cat > "$SYNC_UNITS_TMP" << EOF
 #!/bin/sh
 set -e
 REPO_DIR="$REPO_DIR"
-sed "s#__REPO_DIR__#\${REPO_DIR}#g" "\${REPO_DIR}/system/docker-compose@.service" > /etc/systemd/system/docker-compose@.service
+# install (not redirection) so a stale symlink at the destination gets
+# replaced instead of written through — a plain \`>\` follows existing
+# symlinks and would silently overwrite whatever they point to.
+RENDERED_UNIT_TMP=\$(mktemp)
+sed "s#__REPO_DIR__#\${REPO_DIR}#g" "\${REPO_DIR}/system/docker-compose@.service" > "\$RENDERED_UNIT_TMP"
+install -m 0644 -o root -g root "\$RENDERED_UNIT_TMP" /etc/systemd/system/docker-compose@.service
+rm -f "\$RENDERED_UNIT_TMP"
 ln -sf "\${REPO_DIR}/system/stacks.target" /etc/systemd/system/stacks.target
 systemctl daemon-reload
 systemctl enable stacks.target
 for dir in "\${REPO_DIR}"/docker/*/; do
     [ -d "\$dir" ] || continue
     [ -f "\${dir}.disabled" ] && continue
-    systemctl enable "docker-compose@\$(basename "\$dir")"
+    name=\$(basename "\$dir")
+    systemctl enable "docker-compose@\$name" || echo "WARNING: could not enable docker-compose@\$name" >&2
 done
 EOF
 sudo install -m 0755 -o root -g root "$SYNC_UNITS_TMP" "$SYNC_UNITS_SCRIPT"

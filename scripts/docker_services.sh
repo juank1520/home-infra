@@ -6,8 +6,14 @@ if command -v docker >/dev/null 2>&1; then
 
   REPO_DIR="${HOME}/home-infra"
 
-  # Render docker-compose@.service with the real repo path (WorkingDirectory can't use $HOME)
-  sed "s#__REPO_DIR__#${REPO_DIR}#g" "${REPO_DIR}/system/docker-compose@.service" | sudo tee /etc/systemd/system/docker-compose@.service >/dev/null
+  # Render docker-compose@.service with the real repo path (WorkingDirectory can't use $HOME).
+  # Uses install (not tee/redirection) so a stale symlink at the destination
+  # gets replaced instead of written through — tee/`>` follow existing
+  # symlinks and would silently overwrite whatever they point to.
+  RENDERED_UNIT_TMP=$(mktemp)
+  sed "s#__REPO_DIR__#${REPO_DIR}#g" "${REPO_DIR}/system/docker-compose@.service" > "$RENDERED_UNIT_TMP"
+  sudo install -m 0644 -o root -g root "$RENDERED_UNIT_TMP" /etc/systemd/system/docker-compose@.service
+  rm -f "$RENDERED_UNIT_TMP"
   sudo ln -sf ${REPO_DIR}/system/stacks.target /etc/systemd/system/stacks.target
 
   sudo systemctl daemon-reload
