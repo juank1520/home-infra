@@ -96,14 +96,34 @@ rm -f "\$RENDERED_UNIT_TMP"
 ln -sf "\${REPO_DIR}/system/stacks.target" /etc/systemd/system/stacks.target
 systemctl daemon-reload
 systemctl enable stacks.target
-for dir in "\${REPO_DIR}"/docker/*/; do
-    [ -d "\$dir" ] || continue
-    [ -f "\${dir}.disabled" ] && continue
+
+apply_stack() {
+    dir="\$1"
     name=\$(basename "\$dir")
     systemctl enable "docker-compose@\$name" || echo "WARNING: could not enable docker-compose@\$name" >&2
     (cd "\$dir" && docker compose --env-file="\${REPO_DIR}/.env" up -d) \\
         && systemctl reset-failed "docker-compose@\$name" 2>/dev/null \\
         || echo "WARNING: could not (re)apply docker-compose@\$name" >&2
+}
+
+# networks creates the external networks (dns_net, proxy_net,
+# internal_media_net) every other stack attaches to as external: true — this
+# loop runs docker compose directly instead of via systemctl (see comment
+# below), so it doesn't get the ordering guarantee systemd's
+# After=docker-compose@networks.service provides for a target-driven start.
+# Applying networks first here, unconditionally, is what actually prevents
+# the race — directory iteration order otherwise depends on glob sorting
+# (alphabetical: "cups" and "jellyfin" would run before "networks").
+if [ -d "\${REPO_DIR}/docker/networks" ] && [ ! -f "\${REPO_DIR}/docker/networks/.disabled" ]; then
+    apply_stack "\${REPO_DIR}/docker/networks/"
+fi
+
+for dir in "\${REPO_DIR}"/docker/*/; do
+    [ -d "\$dir" ] || continue
+    [ -f "\${dir}.disabled" ] && continue
+    name=\$(basename "\$dir")
+    [ "\$name" = "networks" ] && continue
+    apply_stack "\$dir"
 done
 EOF
 sudo install -m 0755 -o root -g root "$SYNC_UNITS_TMP" "$SYNC_UNITS_SCRIPT"
