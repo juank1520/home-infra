@@ -1,14 +1,6 @@
 [Unit]
 Description=Docker Compose Stack %i - running __REPO_DIR__/docker/%i
 Requires=docker.service
-# docker-compose@networks creates the external networks (dns_net, proxy_net,
-# internal_media_net) every other stack attaches to as external: true —
-# without this, systemd may start them in parallel and race ("network
-# proxy_net declared as external, but could not be found"). For the
-# docker-compose@networks instance itself this line is a harmless
-# self-reference (After=X inside X) — systemd detects the trivial cycle and
-# ignores it, a standard pattern for "everyone but me" ordering in templated
-# units.
 After=docker.service network-online.target docker-compose@networks.service
 Wants=network-online.target
 
