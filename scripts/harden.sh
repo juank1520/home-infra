@@ -63,8 +63,7 @@ DEPLOY_BOT_SUDOERS="/etc/sudoers.d/deploy-bot"
 ADMIN_USER="${SUDO_USER:-$(logname 2>/dev/null)}"
 DEPLOY_BOT_RULE="deploy-bot ALL=($ADMIN_USER) NOPASSWD: /usr/local/bin/home-infra-fetch.sh
 deploy-bot ALL=($ADMIN_USER) NOPASSWD:SETENV: /usr/local/bin/home-infra-write-env.sh
-deploy-bot ALL=(root) NOPASSWD: /usr/local/bin/home-infra-sync-units.sh
-deploy-bot ALL=(root) NOPASSWD: /usr/bin/systemctl restart stacks.target"
+deploy-bot ALL=(root) NOPASSWD: /usr/local/bin/home-infra-sync-units.sh"
 
 NOPASSWD_FILES=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -vF "$DEPLOY_BOT_SUDOERS" || true)
 if [ -z "$NOPASSWD_FILES" ]; then

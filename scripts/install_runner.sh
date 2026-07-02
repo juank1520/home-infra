@@ -101,6 +101,9 @@ for dir in "\${REPO_DIR}"/docker/*/; do
     [ -f "\${dir}.disabled" ] && continue
     name=\$(basename "\$dir")
     systemctl enable "docker-compose@\$name" || echo "WARNING: could not enable docker-compose@\$name" >&2
+    (cd "\$dir" && docker compose --env-file="\${REPO_DIR}/.env" up -d) \\
+        && systemctl reset-failed "docker-compose@\$name" 2>/dev/null \\
+        || echo "WARNING: could not (re)apply docker-compose@\$name" >&2
 done
 EOF
 sudo install -m 0755 -o root -g root "$SYNC_UNITS_TMP" "$SYNC_UNITS_SCRIPT"
@@ -143,7 +146,6 @@ CHANGED=\$(sudo -u $ADMIN_USER $FETCH_SCRIPT)
 echo "\$CHANGED"
 sudo -u $ADMIN_USER --preserve-env=$ENV_VARS_CSV $WRITE_ENV_SCRIPT
 sudo $SYNC_UNITS_SCRIPT
-sudo systemctl restart stacks.target
 if echo "\$CHANGED" | grep -qE '(^|/)init\.sh\$|^scripts/.*\.sh\$'; then
     echo "MANUAL_STEP_NEEDED=1"
 fi
@@ -162,7 +164,6 @@ SUDOERS_TMP=$(mktemp)
     printf '%s ALL=(%s) NOPASSWD: %s\n' "$RUNNER_USER" "$ADMIN_USER" "$FETCH_SCRIPT"
     printf '%s ALL=(%s) NOPASSWD:SETENV: %s\n' "$RUNNER_USER" "$ADMIN_USER" "$WRITE_ENV_SCRIPT"
     printf '%s ALL=(root) NOPASSWD: %s\n' "$RUNNER_USER" "$SYNC_UNITS_SCRIPT"
-    printf '%s ALL=(root) NOPASSWD: /usr/bin/systemctl restart stacks.target\n' "$RUNNER_USER"
 } > "$SUDOERS_TMP"
 if sudo visudo -cf "$SUDOERS_TMP" >/dev/null 2>&1; then
     sudo install -m 0440 -o root -g root "$SUDOERS_TMP" "$SUDOERS_FILE"
