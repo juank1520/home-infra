@@ -19,6 +19,6 @@ services:
 
     environment:
       - ADMIN_PASSWORD=${CUPS_ADMIN_PASSWORD}
-      - CUPS_SERVER="192.168.1.144:631"
+      - CUPS_SERVER=${SERVER_IP}:631
 
 

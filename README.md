@@ -44,6 +44,37 @@ aplicar ese cambio a mano — el resto del push (docker-compose, configs, etc.) 
 Para desactivar temporalmente un stack sin borrarlo del repo, agrega un archivo `.disabled` dentro
 de su carpeta (ej. `docker/portainer/.disabled`) — `home-infra-sync-units.sh` lo salta.
 
+### Variables de entorno (`.env`) via GitHub secrets
+`.env.example` es la fuente única de qué variables existen (hoy: `SSH_PORT`, `PIHOLE_WEBPASSWORD`,
+`CUPS_ADMIN_PASSWORD`, `SERVER_IP`, `TZ`). Ninguno de estos valores vive en el repo (es público) —
+en cada deploy, el workflow pasa estos valores desde GitHub Actions secrets como variables de
+entorno al runner, y `home-infra-write-env.sh` (corriendo como tu usuario, no como `deploy-bot`)
+los escribe en `$REPO_DIR/.env` con permisos `600`. `docker-compose@.service` siempre arranca los
+stacks con `docker compose --env-file=$REPO_DIR/.env`, así que cualquier stack puede usar estas
+variables sin configuración adicional. `install_runner.sh` deriva la lista de variables leyendo
+los nombres de `.env.example`, así que no hay una segunda lista que mantener sincronizada ahí.
+
+Los secrets se cargan a mano en GitHub (Settings → Secrets and variables → Actions → New
+repository secret, o `gh secret set NAME`) — uno por cada nombre en `.env.example`. Como el deploy
+solo corre en push a `main`, la primera vez (o después de rotar un secret) hace falta aplicar los
+valores manualmente sin esperar un commit:
+```sh
+gh workflow run deploy.yml --repo juank1520/home-infra
+```
+
+Para agregar una variable nueva: agregarla a `.env.example`, agregar la línea
+`NAME: ${{ secrets.NAME }}` en `.github/workflows/deploy.yml`, y crear el secret en GitHub. Nada
+más requiere cambios (GitHub Actions no permite enumerar secrets dinámicamente, por eso el paso en
+`deploy.yml` sigue siendo manual).
+
+`init.sh` crea un `.env` vacío (copiado de `.env.example`) si no existe, solo para que
+`docker compose --env-file` nunca falle por archivo faltante en el primer boot — las contraseñas
+reales llegan recién cuando corre el deploy de arriba.
+
+Nota: la IP también sigue hardcodeada en `docker/pi-hole/etc-dnsmasq.d/99-pihole.conf` y en
+`system/50-cloud-init.yaml` (netplan) — ninguno de los dos pasa por interpolación de
+`docker compose`, así que `SERVER_IP` no los cubre todavía. Sigue pendiente.
+
 ### Setup del runner (una sola vez)
 Si ya respondiste que si en `generate-install-cmd.sh`, este paso ya quedo hecho — `init.sh` corre
 `scripts/install_runner.sh` automaticamente y es idempotente (si no hay `RUNNER_TOKEN` y el runner

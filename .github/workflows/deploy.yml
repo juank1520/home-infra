@@ -3,6 +3,7 @@ name: Deploy to homelab
 on:
   push:
     branches: [main]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -21,6 +22,12 @@ jobs:
           else
             echo "manual_step_needed=false" >> "$GITHUB_OUTPUT"
           fi
+        env:
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          PIHOLE_WEBPASSWORD: ${{ secrets.PIHOLE_WEBPASSWORD }}
+          CUPS_ADMIN_PASSWORD: ${{ secrets.CUPS_ADMIN_PASSWORD }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          TZ: ${{ secrets.TZ }}
 
       - name: Notify deploy result
         if: always()

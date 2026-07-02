@@ -8,8 +8,26 @@ RUNNER_USER="deploy-bot"
 RUNNER_HOME="/opt/actions-runner"
 FETCH_SCRIPT="/usr/local/bin/home-infra-fetch.sh"
 SYNC_UNITS_SCRIPT="/usr/local/bin/home-infra-sync-units.sh"
+WRITE_ENV_SCRIPT="/usr/local/bin/home-infra-write-env.sh"
 DEPLOY_SCRIPT="/usr/local/bin/home-infra-deploy.sh"
 SUDOERS_FILE="/etc/sudoers.d/deploy-bot"
+
+# .env.example is the single source of truth for which values flow from GHA
+# secrets into .env — adding a variable there is the only file-side change
+# needed; it flows automatically into the write-env script's loop and into
+# the deploy script's --preserve-env list. Still needs the matching
+# `secrets.NAME` line added by hand in .github/workflows/deploy.yml (GitHub
+# Actions doesn't allow enumerating secrets dynamically) and the secret
+# itself created in GitHub (Settings > Secrets and variables > Actions).
+ENV_VAR_NAMES=$(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' "$REPO_DIR/.env.example" | sed 's/=$//')
+if [ -z "$ENV_VAR_NAMES" ]; then
+    echo "Error: no se encontraron variables en $REPO_DIR/.env.example"
+    exit 1
+fi
+# paste -s joins without a trailing delimiter, unlike tr + unquoted echo
+# (which depends on word-splitting to drop a trailing separator).
+ENV_VARS=$(printf '%s' "$ENV_VAR_NAMES" | paste -sd' ' -)
+ENV_VARS_CSV=$(printf '%s' "$ENV_VAR_NAMES" | paste -sd, -)
 
 runner_service_name() {
     basename "$(ls /etc/systemd/system/actions.runner.*.service 2>/dev/null | head -n1)" 2>/dev/null || true
@@ -88,6 +106,34 @@ EOF
 sudo install -m 0755 -o root -g root "$SYNC_UNITS_TMP" "$SYNC_UNITS_SCRIPT"
 rm -f "$SYNC_UNITS_TMP"
 
+# Writes the values GHA secrets injected into deploy-bot's own environment
+# (see .github/workflows/deploy.yml) into the repo's .env, which
+# docker-compose@.service always passes to `docker compose --env-file`. Runs
+# as $ADMIN_USER (not root) since that's who owns the repo clone; only takes
+# env vars, no arguments, so sudoers doesn't need to escape or widen anything.
+# Quoted heredoc ('EOF') + sed placeholders (not \$-escaping) so the loop body
+# below is never touched by this script's own shell — only __REPO_DIR__ and
+# __ENV_VARS__ get substituted, both baked in as fixed values from the list
+# above, not read from the environment at runtime.
+echo "Installing fixed env-writer script at $WRITE_ENV_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
+WRITE_ENV_TMP=$(mktemp)
+cat > "$WRITE_ENV_TMP" << 'EOF'
+#!/bin/sh
+set -e
+ENV_FILE="__REPO_DIR__/.env"
+ENV_TMP=$(mktemp)
+for var in __ENV_VARS__; do
+    eval "val=\${$var:-}"
+    printf '%s=%s\n' "$var" "$val"
+done > "$ENV_TMP"
+chmod 600 "$ENV_TMP"
+install -m 0600 "$ENV_TMP" "$ENV_FILE"
+rm -f "$ENV_TMP"
+EOF
+sed -i "s#__REPO_DIR__#${REPO_DIR}#g; s#__ENV_VARS__#${ENV_VARS}#g" "$WRITE_ENV_TMP"
+sudo install -m 0755 -o root -g root "$WRITE_ENV_TMP" "$WRITE_ENV_SCRIPT"
+rm -f "$WRITE_ENV_TMP"
+
 echo "Installing fixed deploy script at $DEPLOY_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
 DEPLOY_SCRIPT_TMP=$(mktemp)
 cat > "$DEPLOY_SCRIPT_TMP" << EOF
@@ -95,6 +141,7 @@ cat > "$DEPLOY_SCRIPT_TMP" << EOF
 set -e
 CHANGED=\$(sudo -u $ADMIN_USER $FETCH_SCRIPT)
 echo "\$CHANGED"
+sudo -u $ADMIN_USER --preserve-env=$ENV_VARS_CSV $WRITE_ENV_SCRIPT
 sudo $SYNC_UNITS_SCRIPT
 sudo systemctl restart stacks.target
 if echo "\$CHANGED" | grep -qE '(^|/)init\.sh\$|^scripts/.*\.sh\$'; then
@@ -113,6 +160,7 @@ echo "Installing scoped sudoers rule for $RUNNER_USER..."
 SUDOERS_TMP=$(mktemp)
 {
     printf '%s ALL=(%s) NOPASSWD: %s\n' "$RUNNER_USER" "$ADMIN_USER" "$FETCH_SCRIPT"
+    printf '%s ALL=(%s) NOPASSWD:SETENV: %s\n' "$RUNNER_USER" "$ADMIN_USER" "$WRITE_ENV_SCRIPT"
     printf '%s ALL=(root) NOPASSWD: %s\n' "$RUNNER_USER" "$SYNC_UNITS_SCRIPT"
     printf '%s ALL=(root) NOPASSWD: /usr/bin/systemctl restart stacks.target\n' "$RUNNER_USER"
 } > "$SUDOERS_TMP"

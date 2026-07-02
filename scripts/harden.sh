@@ -59,16 +59,10 @@ echo
 # ---------------------------------------------------------
 echo "--- Users & Sudo ---"
 
-# deploy-bot's rule is a reviewed exception: three fixed NOPASSWD commands
-# used by the self-hosted Actions runner to deploy — git fetch/reset runs as
-# the repo's actual owner (never root); regenerating docker-compose@.service
-# and enabling docker-compose@<stack> units is scoped to one fixed script
-# (never touches SSH/firewall/users/sudoers); and the final restart is a bare
-# systemctl command. Stripping this here would silently break auto-deploy on
-# every harden.sh run, so it's excluded from the sweep and checked below.
 DEPLOY_BOT_SUDOERS="/etc/sudoers.d/deploy-bot"
 ADMIN_USER="${SUDO_USER:-$(logname 2>/dev/null)}"
 DEPLOY_BOT_RULE="deploy-bot ALL=($ADMIN_USER) NOPASSWD: /usr/local/bin/home-infra-fetch.sh
+deploy-bot ALL=($ADMIN_USER) NOPASSWD:SETENV: /usr/local/bin/home-infra-write-env.sh
 deploy-bot ALL=(root) NOPASSWD: /usr/local/bin/home-infra-sync-units.sh
 deploy-bot ALL=(root) NOPASSWD: /usr/bin/systemctl restart stacks.target"
 
