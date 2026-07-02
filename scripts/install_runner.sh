@@ -47,8 +47,11 @@ set -e
 REPO_DIR="$REPO_DIR"
 REPO_URL="https://github.com/$REPO.git"
 OLD_SHA=\$(git -C "\$REPO_DIR" rev-parse HEAD)
-git -C "\$REPO_DIR" fetch "\$REPO_URL" main
-git -C "\$REPO_DIR" reset --hard FETCH_HEAD
+# Fetches straight into origin/main's tracking ref (not just FETCH_HEAD) so a
+# manual "git pull" later sees the repo as already up to date, instead of
+# re-fetching what this script already applied.
+git -C "\$REPO_DIR" fetch "\$REPO_URL" +main:refs/remotes/origin/main
+git -C "\$REPO_DIR" reset --hard refs/remotes/origin/main
 git -C "\$REPO_DIR" diff --name-only "\$OLD_SHA" HEAD
 EOF
 sudo install -m 0755 -o root -g root "$FETCH_SCRIPT_TMP" "$FETCH_SCRIPT"
