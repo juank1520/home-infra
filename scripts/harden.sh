@@ -249,16 +249,22 @@ else
 fi
 
 WIFI_BLOCKED=$(rfkill list wifi 2>/dev/null | grep -c "Soft blocked: yes" || true)
-if [ "$WIFI_BLOCKED" -gt 0 ] && ! ip link show wlan0 2>/dev/null | grep -qE "\bUP\b"; then
-    ok "Wi-Fi disabled"
+WPA_ENABLED=1
+systemctl is-enabled wpa_supplicant.service >/dev/null 2>&1 && WPA_ENABLED=0
+if [ "$WIFI_BLOCKED" -gt 0 ] && [ "$WPA_ENABLED" -eq 1 ] && ! ip link show wlan0 2>/dev/null | grep -qE "\bUP\b"; then
+    ok "Wi-Fi disabled (rfkill blocked, wpa_supplicant disabled)"
 else
+    systemctl disable --now wpa_supplicant.service >/dev/null 2>&1
     rfkill block wifi 2>/dev/null
     ip link set wlan0 down 2>/dev/null || true
+    sleep 1
     WIFI_BLOCKED=$(rfkill list wifi 2>/dev/null | grep -c "Soft blocked: yes" || true)
-    if [ "$WIFI_BLOCKED" -gt 0 ]; then
-        fixed "Wi-Fi blocked (not persistent — apply netplan for permanent disable)"
+    WPA_ENABLED=1
+    systemctl is-enabled wpa_supplicant.service >/dev/null 2>&1 && WPA_ENABLED=0
+    if [ "$WIFI_BLOCKED" -gt 0 ] && [ "$WPA_ENABLED" -eq 1 ]; then
+        fixed "Wi-Fi disabled (rfkill blocked + wpa_supplicant disabled, persists across reboot)"
     else
-        fail "Wi-Fi active" "Set SERVER_IP in .env and re-run harden.sh to apply netplan (persists Wi-Fi disable)"
+        fail "Wi-Fi active" "Run: sudo systemctl disable --now wpa_supplicant.service && sudo rfkill block wifi"
     fi
 fi
 
