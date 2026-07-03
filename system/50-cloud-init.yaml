@@ -6,7 +6,7 @@ network:
       optional: false
       dhcp4: false
       addresses:
-        - 192.168.1.144/24
+        - __SERVER_IP__/24
       routes:
         - to: default
           via: 192.168.1.1

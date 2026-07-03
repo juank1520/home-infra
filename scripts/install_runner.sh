@@ -97,6 +97,21 @@ ln -sf "\${REPO_DIR}/system/stacks.target" /etc/systemd/system/stacks.target
 systemctl daemon-reload
 systemctl enable stacks.target
 
+# Source .env for SERVER_IP (used to render the dnsmasq template below).
+ENV_FILE="\${REPO_DIR}/.env"
+if [ -f "\$ENV_FILE" ]; then
+    . "\$ENV_FILE"
+fi
+
+# Render pi-hole's dnsmasq host-record with the real LAN IP — this file is
+# bind-mounted as-is into the pihole container, so it can't go through
+# docker compose's \${SERVER_IP} interpolation like the compose files do.
+if [ -n "\$SERVER_IP" ]; then
+    sed "s#__SERVER_IP__#\${SERVER_IP}#g" \\
+        "\${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf.template" \\
+        > "\${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf"
+fi
+
 apply_stack() {
     dir="\$1"
     name=\$(basename "\$dir")

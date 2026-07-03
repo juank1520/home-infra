@@ -224,6 +224,30 @@ echo
 # ---------------------------------------------------------
 echo "--- Network ---"
 
+NETPLAN_TEMPLATE="$SCRIPT_DIR/../system/50-cloud-init.yaml"
+NETPLAN_TARGET="/etc/netplan/60-homeserver.yaml"
+
+if [ -n "$SERVER_IP" ]; then
+    CURRENT_IP=$(ip -4 -o addr show eth0 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -n1)
+    if [ "$CURRENT_IP" = "$SERVER_IP" ]; then
+        ok "Static IP matches SERVER_IP ($SERVER_IP)"
+    else
+        NETPLAN_TMP=$(mktemp)
+        sed "s#__SERVER_IP__#${SERVER_IP}#g" "$NETPLAN_TEMPLATE" > "$NETPLAN_TMP"
+        install -m 0600 -o root -g root "$NETPLAN_TMP" "$NETPLAN_TARGET"
+        rm -f "$NETPLAN_TMP"
+        netplan apply
+        CURRENT_IP=$(ip -4 -o addr show eth0 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -n1)
+        if [ "$CURRENT_IP" = "$SERVER_IP" ]; then
+            fixed "Static IP applied via netplan ($SERVER_IP)"
+        else
+            fail "Static IP" "Could not apply netplan. Check $NETPLAN_TARGET and run: netplan apply"
+        fi
+    fi
+else
+    warn "SERVER_IP not set in .env" "Set SERVER_IP in .env and re-run harden.sh to apply static IP"
+fi
+
 WIFI_BLOCKED=$(rfkill list wifi 2>/dev/null | grep -c "Soft blocked: yes" || true)
 if [ "$WIFI_BLOCKED" -gt 0 ] && ! ip link show wlan0 2>/dev/null | grep -qE "\bUP\b"; then
     ok "Wi-Fi disabled"
