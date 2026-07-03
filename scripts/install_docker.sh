@@ -47,8 +47,9 @@ else
 
     if [ -n "$SUDO_USER" ]; then
         sudo usermod -aG docker "$SUDO_USER"
-        echo "$SUDO_USER user added to goup docker."
-        echo "Must loguout session and login again."
+        echo "$SUDO_USER was added to the docker group."
+        echo "This setup script uses sudo for all docker commands, so no action is needed now."
+        echo "To run docker without sudo as $SUDO_USER, log out and log back in first."
     fi
 
     echo "Docker instalation is done."
