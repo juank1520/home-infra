@@ -229,7 +229,7 @@ NETPLAN_TARGET="/etc/netplan/60-homeserver.yaml"
 
 if [ -n "$SERVER_IP" ]; then
     CURRENT_IP=$(ip -4 -o addr show eth0 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -n1)
-    if [ "$CURRENT_IP" = "$SERVER_IP" ]; then
+    if [ "$CURRENT_IP" = "$SERVER_IP" ] && grep -q "$SERVER_IP" "$NETPLAN_TARGET" 2>/dev/null; then
         ok "Static IP matches SERVER_IP ($SERVER_IP)"
     else
         NETPLAN_TMP=$(mktemp)
@@ -258,7 +258,7 @@ else
     if [ "$WIFI_BLOCKED" -gt 0 ]; then
         fixed "Wi-Fi blocked (not persistent — apply netplan for permanent disable)"
     else
-        fail "Wi-Fi active" "Run: sudo cp system/50-cloud-init.yaml /etc/netplan/ && sudo netplan apply"
+        fail "Wi-Fi active" "Set SERVER_IP in .env and re-run harden.sh to apply netplan (persists Wi-Fi disable)"
     fi
 fi
 
