@@ -105,8 +105,7 @@ Existen dos redes
 
 ## Creamos los link virutales
 Creamos los links virtuales de docker-compose@.service y stacks.target para poder manejar las imagenes de docker con systemctl y ejecutarlas en la inicializacion
-Cada vez que se crea un servicio se tiene que dar de alta el el stacks target con ```sudo systemctl enable docker-compose@SERVICE-DOCKER-FILE```
-Y se tiene que agregar ese comando al ini.sh
+`scripts/docker_services.sh` (setup inicial) y `home-infra-sync-units.sh` (auto-deploy) recorren `docker/*/` dinámicamente y hacen `systemctl enable docker-compose@<carpeta>` por cada stack, saltando las que tengan un archivo `.disabled` — un stack nuevo solo necesita su propia carpeta `docker/<nombre>/`, no requiere editar `init.sh` ni ningún script a mano.
 
 Para ver la lista de servicios que corren con stacks.target 
 ```systemctl list-dependencies stacks.target```
