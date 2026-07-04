@@ -27,6 +27,7 @@ services:
       - "traefik.http.routers.torrent.rule=Host(`torrent.${DUCKDNS_DOMAIN}`)"
       - "traefik.http.routers.torrent.entrypoints=websecure"
       - "traefik.http.routers.torrent.tls=true"
+      - "traefik.http.routers.torrent.tls.certresolver=letsencrypt"
       - "traefik.http.services.torrent.loadbalancer.server.port=8080"
       - "traefik.docker.network=proxy_net"
 

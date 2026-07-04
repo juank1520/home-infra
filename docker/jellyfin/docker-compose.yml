@@ -28,6 +28,7 @@ services:
       # HTTPS FOR ALL OTHER DEVICES
       - "traefik.http.routers.jellyfin-https.rule=Host(`jellyfin.${DUCKDNS_DOMAIN}`)"
       - "traefik.http.routers.jellyfin-https.tls=true"
+      - "traefik.http.routers.jellyfin-https.tls.certresolver=letsencrypt"
       - "traefik.http.routers.jellyfin-https.entrypoints=websecure"
 
 

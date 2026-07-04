@@ -26,6 +26,7 @@ services:
       - "traefik.http.routers.radarr.rule=Host(`radarr.${DUCKDNS_DOMAIN}`)"
       - "traefik.http.routers.radarr.entrypoints=websecure"
       - "traefik.http.routers.radarr.tls=true"
+      - "traefik.http.routers.radarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.radarr.loadbalancer.server.port=7878"
       - "traefik.docker.network=proxy_net"
 

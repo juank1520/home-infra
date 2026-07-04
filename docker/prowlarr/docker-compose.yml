@@ -24,6 +24,7 @@ services:
       - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.${DUCKDNS_DOMAIN}`)"
       - "traefik.http.routers.prowlarr.entrypoints=websecure"
       - "traefik.http.routers.prowlarr.tls=true"
+      - "traefik.http.routers.prowlarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
       - "traefik.docker.network=proxy_net"
 
