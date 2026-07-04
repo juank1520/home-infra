@@ -1,5 +1,6 @@
 .env
-/docker/traefik/certs/*
+/docker/traefik/traefik.yml
+/docker/traefik/acme.json
 /docker/traefik/logs/traefik.log
 docker/qbittorrent/config/*
 docker/qbittorrent/downloads/*

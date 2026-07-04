@@ -21,7 +21,7 @@ services:
 
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.lan`)"
+      - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.${DUCKDNS_DOMAIN}`)"
       - "traefik.http.routers.prowlarr.entrypoints=websecure"
       - "traefik.http.routers.prowlarr.tls=true"
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"

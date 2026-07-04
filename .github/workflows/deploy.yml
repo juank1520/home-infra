@@ -28,6 +28,9 @@ jobs:
           CUPS_ADMIN_PASSWORD: ${{ secrets.CUPS_ADMIN_PASSWORD }}
           SERVER_IP: ${{ secrets.SERVER_IP }}
           TZ: ${{ secrets.TZ }}
+          DUCKDNS_TOKEN: ${{ secrets.DUCKDNS_TOKEN }}
+          DUCKDNS_DOMAIN: ${{ secrets.DUCKDNS_DOMAIN }}
+          ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
 
       - name: Notify deploy result
         if: always()

@@ -20,11 +20,22 @@ if command -v docker >/dev/null 2>&1; then
 
   sudo systemctl daemon-reload
 
-  if [ -n "$SERVER_IP" ]; then
-    sed "s#__SERVER_IP__#${SERVER_IP}#g" \
+  if [ -n "$SERVER_IP" ] && [ -n "$DUCKDNS_DOMAIN" ]; then
+    sed "s#__SERVER_IP__#${SERVER_IP}#g; s#__DUCKDNS_DOMAIN__#${DUCKDNS_DOMAIN}#g" \
       "${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf.template" \
       > "${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf"
   fi
+
+  if [ -n "$DUCKDNS_DOMAIN" ]; then
+    sed "s#__DUCKDNS_DOMAIN__#${DUCKDNS_DOMAIN}#g" \
+      "${REPO_DIR}/docker/traefik/traefik.yml.template" \
+      > "${REPO_DIR}/docker/traefik/traefik.yml"
+  fi
+
+  # Traefik refuses to start if acme.json is missing or has looser
+  # permissions than 600 (it stores the certificate's private key).
+  touch "${REPO_DIR}/docker/traefik/acme.json"
+  chmod 600 "${REPO_DIR}/docker/traefik/acme.json"
 
   # Enable stacks.target to inicilize when the system starts
   sudo systemctl enable stacks.target

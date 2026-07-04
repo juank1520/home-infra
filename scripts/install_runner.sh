@@ -106,11 +106,24 @@ fi
 # Render pi-hole's dnsmasq host-record with the real LAN IP — this file is
 # bind-mounted as-is into the pihole container, so it can't go through
 # docker compose's \${SERVER_IP} interpolation like the compose files do.
-if [ -n "\$SERVER_IP" ]; then
-    sed "s#__SERVER_IP__#\${SERVER_IP}#g" \\
+if [ -n "\$SERVER_IP" ] && [ -n "\$DUCKDNS_DOMAIN" ]; then
+    sed "s#__SERVER_IP__#\${SERVER_IP}#g; s#__DUCKDNS_DOMAIN__#\${DUCKDNS_DOMAIN}#g" \\
         "\${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf.template" \\
         > "\${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf"
 fi
+
+# Same reasoning for Traefik's static config — it's bind-mounted as-is, so
+# the wildcard domain has to be rendered in rather than interpolated.
+if [ -n "\$DUCKDNS_DOMAIN" ]; then
+    sed "s#__DUCKDNS_DOMAIN__#\${DUCKDNS_DOMAIN}#g" \\
+        "\${REPO_DIR}/docker/traefik/traefik.yml.template" \\
+        > "\${REPO_DIR}/docker/traefik/traefik.yml"
+fi
+
+# Traefik refuses to start if acme.json is missing or has looser
+# permissions than 600 (it stores the certificate's private key).
+touch "\${REPO_DIR}/docker/traefik/acme.json"
+chmod 600 "\${REPO_DIR}/docker/traefik/acme.json"
 
 apply_stack() {
     dir="\$1"

@@ -9,7 +9,7 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TZ}
-      - JELLYFIN_PublishedServerUrl=https://jellyfin.lan
+      - JELLYFIN_PublishedServerUrl=https://jellyfin.${DUCKDNS_DOMAIN}
     volumes:
       - ./config/data:/config
       - /tvseries:/data/tvshows
@@ -22,11 +22,11 @@ services:
       - "traefik.enable=true"
 
       # HTTP JUST FOR TVs IN THE IP WHITE LIST
-      - "traefik.http.routers.jellyfin-http.rule=Host(`jellyfin.lan`)"
+      - "traefik.http.routers.jellyfin-http.rule=Host(`jellyfin.${DUCKDNS_DOMAIN}`)"
       - "traefik.http.routers.jellyfin-http.entrypoints=web"
 
       # HTTPS FOR ALL OTHER DEVICES
-      - "traefik.http.routers.jellyfin-https.rule=Host(`jellyfin.lan`)"
+      - "traefik.http.routers.jellyfin-https.rule=Host(`jellyfin.${DUCKDNS_DOMAIN}`)"
       - "traefik.http.routers.jellyfin-https.tls=true"
       - "traefik.http.routers.jellyfin-https.entrypoints=websecure"
 

@@ -9,6 +9,10 @@ services:
     command:
       - "--configFile=/traefik.yml"
 
+    environment:
+      - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=${ACME_EMAIL}
+
     ports:
       - "80:80"
       - "443:443"
@@ -17,8 +21,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /etc/localtime:/etc/localtime:ro
       - ./traefik.yml:/traefik.yml:ro
-      - ./config.yml:/config.yml:ro
-      - ./certs/:/certs/:ro
+      - ./acme.json:/acme.json
       - ./logs:/var/log/traefik
 
     networks:

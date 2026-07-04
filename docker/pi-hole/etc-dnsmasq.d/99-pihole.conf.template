@@ -1,7 +1,7 @@
-host-record=home.lan,__SERVER_IP__
-cname=pihole.lan,home.lan
-cname=torrent.lan,home.lan
-cname=sonarr.lan,home.lan
-cname=radarr.lan,home.lan
-cname=prowlarr.lan,home.lan
-cname=jellyfin.lan,home.lan
+host-record=home.__DUCKDNS_DOMAIN__,__SERVER_IP__
+cname=pihole.__DUCKDNS_DOMAIN__,home.__DUCKDNS_DOMAIN__
+cname=torrent.__DUCKDNS_DOMAIN__,home.__DUCKDNS_DOMAIN__
+cname=sonarr.__DUCKDNS_DOMAIN__,home.__DUCKDNS_DOMAIN__
+cname=radarr.__DUCKDNS_DOMAIN__,home.__DUCKDNS_DOMAIN__
+cname=prowlarr.__DUCKDNS_DOMAIN__,home.__DUCKDNS_DOMAIN__
+cname=jellyfin.__DUCKDNS_DOMAIN__,home.__DUCKDNS_DOMAIN__
