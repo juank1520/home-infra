@@ -98,6 +98,15 @@ Existen dos redes
 1. dns_net: Resuelve los DNS, ecucha en el puerto 53/tcp y 53/udp, y resuleve los nombres como pihole.lan a la ip de la rasperry, esta red solo debe de ser visible para pi-hole
 2. proxy_net: Hace que traefik redireccione el trafico al contenedor dependiendo de que Host venga el trafico
 
+## TLS / Certificados
+`docker/traefik/init.certs.sh` corre automáticamente en `init.sh` (antes de levantar los stacks) y genera, si no existe uno válido, una CA local (`Juank Root CA`) y un certificado wildcard `*.lan` en `docker/traefik/certs/`. Traefik lo sirve para `pihole.lan` y demás hosts `*.lan`. Los certificados están en `.gitignore` — se regeneran por host en cada instalación.
+
+Para que el navegador **no** muestre aviso de certificado, hay que importar **una sola vez** la CA (`docker/traefik/certs/ca.crt`) en el almacén de confianza de cada dispositivo cliente (no se puede automatizar desde el servidor). Cópiala a tu equipo, por ejemplo:
+```
+scp -P <SSH_PORT> juanca@<SERVER_IP>:~/home-infra/docker/traefik/certs/ca.crt .
+```
+y añádela como CA de confianza en el sistema/navegador. Sin este paso, la página carga igual pero con la advertencia de "no seguro".
+
 ## Orden de servicios para levantar
 1. network ```sudo systemctl start docker-compose@networks```
 2. traefik (reverse proxy) ```sudo systemctl start docker-compose@traefik```

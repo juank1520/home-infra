@@ -56,3 +56,19 @@ else
     docker --version
 
 fi
+
+DROPIN_DIR="/etc/systemd/system/docker.service.d"
+sudo mkdir -p "$DROPIN_DIR"
+sudo tee "${DROPIN_DIR}/min-api.conf" >/dev/null <<'EOF'
+[Service]
+Environment=DOCKER_MIN_API_VERSION=1.24
+EOF
+
+sudo systemctl daemon-reload
+
+if [ "$(sudo docker version --format '{{.Server.MinAPIVersion}}' 2>/dev/null)" != "1.24" ]; then
+    echo "Applying DOCKER_MIN_API_VERSION=1.24 (restarting Docker)..."
+    sudo systemctl restart docker
+else
+    echo "Docker minimum API version already 1.24."
+fi

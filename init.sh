@@ -9,6 +9,8 @@ fi
 
 ./scripts/github-config.sh
 ./scripts/install_docker.sh
+./scripts/free_dns_port.sh
+sh ./docker/traefik/init.certs.sh
 ./scripts/docker_services.sh
 ./scripts/install_runner.sh
 sudo ./scripts/harden.sh
