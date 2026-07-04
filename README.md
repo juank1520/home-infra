@@ -46,7 +46,7 @@ de su carpeta (ej. `docker/portainer/.disabled`) — `home-infra-sync-units.sh` 
 
 ### Variables de entorno (`.env`) via GitHub secrets
 `.env.example` es la fuente única de qué variables existen (hoy: `SSH_PORT`, `PIHOLE_WEBPASSWORD`,
-`CUPS_ADMIN_PASSWORD`, `SERVER_IP`, `TZ`, `DUCKDNS_TOKEN`, `DUCKDNS_DOMAIN`, `ACME_EMAIL`). Ninguno de estos valores vive en el repo (es público) —
+`CUPS_ADMIN_PASSWORD`, `SERVER_IP`, `TZ`, `DESEC_TOKEN`, `BASE_DOMAIN`, `ACME_EMAIL`). Ninguno de estos valores vive en el repo (es público) —
 en cada deploy, el workflow pasa estos valores desde GitHub Actions secrets como variables de
 entorno al runner, y `home-infra-write-env.sh` (corriendo como tu usuario, no como `deploy-bot`)
 los escribe en `$REPO_DIR/.env` con permisos `600`. `docker-compose@.service` siempre arranca los
@@ -93,36 +93,38 @@ Para configurarlo despues, o volver a registrarlo:
    `GMAIL_APP_PASSWORD` (un [App Password](https://myaccount.google.com/apppasswords) dedicado,
    no la contraseña principal de tu cuenta) para que lleguen las notificaciones por correo.
 
-## TLS / Certificados (DuckDNS + Let's Encrypt)
-Traefik obtiene un certificado wildcard real de Let's Encrypt (`*.$DUCKDNS_DOMAIN`) vía el reto
+## TLS / Certificados (deSEC + Let's Encrypt)
+Traefik obtiene un certificado wildcard real de Let's Encrypt (`*.$BASE_DOMAIN`) vía el reto
 DNS-01 — sin exponer ningún puerto a internet: solo crea un registro TXT temporal para validar que
-controlas el dominio. Los nombres de cada servicio (`pihole.$DUCKDNS_DOMAIN`,
-`jellyfin.$DUCKDNS_DOMAIN`, etc.) solo existen en el DNS interno de Pi-hole; nunca se publican hacia
+controlas el dominio. Los nombres de cada servicio (`pihole.$BASE_DOMAIN`,
+`jellyfin.$BASE_DOMAIN`, etc.) solo existen en el DNS interno de Pi-hole; nunca se publican hacia
 afuera. El resultado es un certificado válido de fábrica en cualquier dispositivo (incluyendo TVs
 con Plex/Jellyfin), sin instalar ninguna CA propia.
 
 Setup (una sola vez):
-1. Crear cuenta en [duckdns.org](https://www.duckdns.org) y elegir un subdominio (ej. `juancasa`
-   → `juancasa.duckdns.org`).
-2. Copiar el token de la cuenta (aparece en la página principal de DuckDNS).
+1. Crear cuenta en [desec.io](https://desec.io), y crear un dominio `*.dedyn.io` (ej. `jchome.dedyn.io`).
+2. Crear un token de API: en la consola de deSEC → *Token Management* → crear token (se muestra una
+   sola vez, cópialo). Puede acotarse por dominio/subred para menor privilegio.
 3. Cargar 3 secrets en GitHub (mismo mecanismo que el resto de variables, ver sección de arriba):
-   `DUCKDNS_TOKEN` (el token), `DUCKDNS_DOMAIN` (el **dominio completo**, ej. `juancasa.duckdns.org`
-   — no solo `juancasa`; las plantillas lo usan tal cual, sin añadir el sufijo),
+   `DESEC_TOKEN` (el token), `BASE_DOMAIN` (el **dominio completo**, ej. `jchome.dedyn.io`
+   — no solo `jchome`; las plantillas lo usan tal cual, sin añadir el sufijo),
    `ACME_EMAIL` (correo para avisos de expiración de Let's Encrypt).
 4. Aplicar: `gh workflow run deploy.yml --repo juank1520/home-infra` (o re-correr `init.sh`).
 
 `docker/traefik/traefik.yml.template` y `docker/pi-hole/etc-dnsmasq.d/99-pihole.conf.template` se
-renderizan con `DUCKDNS_DOMAIN` (mismo patrón de plantillas que `SERVER_IP`); el certificado se
+renderizan con `BASE_DOMAIN` (mismo patrón de plantillas que `SERVER_IP`); el certificado se
 persiste en `docker/traefik/acme.json` (gitignored, permisos 600 — contiene la clave privada).
+El pre-chequeo de propagación de lego se desactiva (`propagation.disableChecks`) porque esta
+LAN bloquea el DNS saliente por UDP 53; Let's Encrypt hace la validación real desde sus servidores.
 
-Este es un paso transicional: DuckDNS es gratis y sirve para validar que todo funciona. Migrar a un
-dominio propio en Cloudflare después solo implica cambiar `DUCKDNS_DOMAIN` por el dominio real,
-cambiar el provider en `traefik.yml.template` (`duckdns` → `cloudflare`) y rotar el token — la
+Migrar más adelante a un dominio propio en Cloudflare solo implica cambiar `BASE_DOMAIN` por el
+dominio real, cambiar el provider en `traefik.yml.template` (`desec` → `cloudflare`) y rotar el
+token (`DESEC_TOKEN` → el nombre que espere el provider de Cloudflare, `CF_DNS_API_TOKEN`) — la
 arquitectura de split-horizon y las labels de los servicios no cambian.
 
 ## Networks
 Existen dos redes
-1. dns_net: Resuelve los DNS, ecucha en el puerto 53/tcp y 53/udp, y resuleve los nombres como pihole.$DUCKDNS_DOMAIN a la ip de la rasperry, esta red solo debe de ser visible para pi-hole
+1. dns_net: Resuelve los DNS, ecucha en el puerto 53/tcp y 53/udp, y resuleve los nombres como pihole.$BASE_DOMAIN a la ip de la rasperry, esta red solo debe de ser visible para pi-hole
 2. proxy_net: Hace que traefik redireccione el trafico al contenedor dependiendo de que Host venga el trafico
 
 ## Orden de servicios para levantar

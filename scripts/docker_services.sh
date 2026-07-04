@@ -20,14 +20,14 @@ if command -v docker >/dev/null 2>&1; then
 
   sudo systemctl daemon-reload
 
-  if [ -n "$SERVER_IP" ] && [ -n "$DUCKDNS_DOMAIN" ]; then
-    sed "s#__SERVER_IP__#${SERVER_IP}#g; s#__DUCKDNS_DOMAIN__#${DUCKDNS_DOMAIN}#g" \
+  if [ -n "$SERVER_IP" ] && [ -n "$BASE_DOMAIN" ]; then
+    sed "s#__SERVER_IP__#${SERVER_IP}#g; s#__BASE_DOMAIN__#${BASE_DOMAIN}#g" \
       "${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf.template" \
       > "${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf"
   fi
 
-  if [ -n "$DUCKDNS_DOMAIN" ]; then
-    sed "s#__DUCKDNS_DOMAIN__#${DUCKDNS_DOMAIN}#g" \
+  if [ -n "$BASE_DOMAIN" ]; then
+    sed "s#__BASE_DOMAIN__#${BASE_DOMAIN}#g" \
       "${REPO_DIR}/docker/traefik/traefik.yml.template" \
       > "${REPO_DIR}/docker/traefik/traefik.yml"
   fi

@@ -10,7 +10,7 @@ services:
       - "--configFile=/traefik.yml"
 
     environment:
-      - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
+      - DESEC_TOKEN=${DESEC_TOKEN}
       - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=${ACME_EMAIL}
 
     ports:
