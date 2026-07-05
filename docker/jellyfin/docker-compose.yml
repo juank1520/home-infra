@@ -20,12 +20,6 @@ services:
 
     labels:
       - "traefik.enable=true"
-
-      # HTTP JUST FOR TVs IN THE IP WHITE LIST
-      - "traefik.http.routers.jellyfin-http.rule=Host(`jellyfin.${BASE_DOMAIN}`)"
-      - "traefik.http.routers.jellyfin-http.entrypoints=web"
-
-      # HTTPS FOR ALL OTHER DEVICES
       - "traefik.http.routers.jellyfin-https.rule=Host(`jellyfin.${BASE_DOMAIN}`)"
       - "traefik.http.routers.jellyfin-https.tls=true"
       - "traefik.http.routers.jellyfin-https.tls.certresolver=letsencrypt"

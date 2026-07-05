@@ -9,6 +9,7 @@ services:
       - dns_net
       - proxy_net
       - internal_media_net
+      - socket_proxy_net
 
 networks:
   dns_net:
@@ -22,3 +23,8 @@ networks:
   internal_media_net:
     name: internal_media_net
     driver: bridge
+
+  socket_proxy_net:
+    name: socket_proxy_net
+    driver: bridge
+    internal: true

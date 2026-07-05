@@ -1,2 +1,3 @@
 my-docker:
-  socket: /var/run/docker.sock
+  host: socket-proxy
+  port: 2375
