@@ -6,7 +6,7 @@ accessLog: {}
 
 providers:
   docker:
-    endpoint: "unix:///var/run/docker.sock"
+    endpoint: "tcp://socket-proxy:2375"
     exposedByDefault: false
     network: proxy_net
 
