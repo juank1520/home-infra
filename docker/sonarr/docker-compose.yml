@@ -31,6 +31,9 @@ services:
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
       - "traefik.docker.network=proxy_net"
 
+      - "traefik.http.middlewares.sonarr-ipallowlist.ipallowlist.sourcerange=192.168.1.0/24"
+      - "traefik.http.routers.sonarr.middlewares=sonarr-ipallowlist"
+
       - "homepage.group=Descargas"
       - "homepage.name=Sonarr"
       - "homepage.icon=sonarr.png"

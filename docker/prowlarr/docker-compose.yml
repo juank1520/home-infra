@@ -29,6 +29,9 @@ services:
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
       - "traefik.docker.network=proxy_net"
 
+      - "traefik.http.middlewares.prowlarr-ipallowlist.ipallowlist.sourcerange=192.168.1.0/24"
+      - "traefik.http.routers.prowlarr.middlewares=prowlarr-ipallowlist"
+
       - "homepage.group=Descargas"
       - "homepage.name=Prowlarr"
       - "homepage.icon=prowlarr.png"

@@ -32,6 +32,9 @@ services:
       - "traefik.http.services.torrent.loadbalancer.server.port=8080"
       - "traefik.docker.network=proxy_net"
 
+      - "traefik.http.middlewares.torrent-ipallowlist.ipallowlist.sourcerange=192.168.1.0/24"
+      - "traefik.http.routers.torrent.middlewares=torrent-ipallowlist"
+
       - "homepage.group=Descargas"
       - "homepage.name=qBittorrent"
       - "homepage.icon=qbittorrent.png"
