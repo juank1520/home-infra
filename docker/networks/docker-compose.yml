@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   networks:
     image: alpine:latest

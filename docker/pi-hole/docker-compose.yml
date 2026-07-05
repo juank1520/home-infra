@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   pihole:
     image: pihole/pihole:latest
@@ -13,7 +11,7 @@ services:
     environment:
       TZ: ${TZ}
       FTLCONF_webserver_api_password: ${PIHOLE_WEBPASSWORD}
-      FTLCONF_dns_listeningMode: "ALL"
+      FTLCONF_dns_listeningMode: "LOCAL"
       FTLCONF_misc_etc_dnsmasq_d: 'true'
       FTLCONF_dns_reply_host_IPv4: '${SERVER_IP}'
 #      FTLCONF_dns_reply_host_IPv6: '2800:98:1612:1559:29da:bdf1:a823:bdf7'
@@ -23,8 +21,8 @@ services:
       - ./etc-dnsmasq.d:/etc/dnsmasq.d
 
     ports:
-      - "53:53/tcp"
-      - "53:53/udp"
+      - "${SERVER_IP}:53:53/tcp"
+      - "${SERVER_IP}:53:53/udp"
 #      - "8081:80/tcp"
 
     networks:
