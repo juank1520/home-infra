@@ -151,6 +151,50 @@ Existen dos redes
 1. dns_net: Resuelve los DNS, ecucha en el puerto 53/tcp y 53/udp, y resuleve los nombres como pihole.$BASE_DOMAIN a la ip de la rasperry, esta red solo debe de ser visible para pi-hole
 2. proxy_net: Hace que traefik redireccione el trafico al contenedor dependiendo de que Host venga el trafico
 
+## Almacenamiento (disco externo para Jellyfin/Sonarr/Radarr/qBittorrent)
+El stack de streaming (`docker/jellyfin`, `docker/qbittorrent`, `docker/sonarr`,
+`docker/radarr`) comparte un único disco externo montado en `/mnt/media` (`/mnt/media/movies`,
+`/mnt/media/tv`, `/mnt/media/downloads`), para que qBittorrent pueda descargar, Sonarr/Radarr
+importar/organizar y Jellyfin reproducir desde las mismas rutas de host. Nada de esto se aplica
+solo — es manual, la primera vez que conectes el disco:
+
+1. Conectar el disco por USB.
+2. Correr el script interactivo (sin argumentos):
+   ```sh
+   sudo ./scripts/setup_media_mount.sh
+   ```
+   El script:
+   - Detecta los discos conectados (excluyendo el disco del sistema) y te muestra una lista
+     numerada con tamaño, sistema de archivos y si ya está montado en otro lado.
+   - Vos elegís cuál usar — pide confirmación explícita antes de tocar nada.
+   - Si el disco elegido no tiene sistema de archivos, ofrece formatearlo como ext4 (recomendado,
+     nativo de Linux), pidiendo otra confirmación aparte porque **borra todo su contenido**.
+   - Agrega la entrada a `fstab` (con `nofail`, para que un boot sin el disco conectado no se
+     cuelgue), monta en `/mnt/media`, crea `movies`/`tv`/`downloads` con dueño `1000:1000`, y
+     agrega un override de systemd (`RequiresMountsFor=/mnt/media`) a
+     `docker-compose@jellyfin/qbittorrent/sonarr/radarr` para que esos 4 stacks se nieguen a
+     arrancar si el disco no está montado (en vez de escribir silenciosamente sobre la carpeta
+     vacía en la SD).
+   - Es idempotente: correrlo de nuevo sobre un disco ya configurado no duplica la entrada de
+     `fstab`.
+3. Verificar: `mount | grep /mnt/media` y `ls -la /mnt/media`.
+
+Gluetun/VPN delante de qBittorrent (para no exponer tu IP real en los swarms de torrent) queda
+fuera de este setup — es una tarea aparte a futuro.
+
+## Conectar los servicios entre sí
+La red Docker ya conecta los contenedores (`internal_media_net` + `proxy_net`), y con el disco
+montado todos comparten las mismas rutas de host — pero el cableado a nivel de aplicación vive en
+la base de datos interna de cada servicio, no en archivos del repo, así que no se aplica solo con
+un push. Checklist manual, una sola vez, desde cada web UI:
+
+- **Prowlarr**: agregar indexers, y en *Settings → Apps* conectar Sonarr y Radarr (sync automático
+  de indexers hacia ambos).
+- **Sonarr / Radarr**: en *Settings → Download Clients* agregar qBittorrent (host `qbittorrent`,
+  puerto `8080` — el nombre del contenedor resuelve por DNS de Docker dentro de
+  `internal_media_net`); confirmar los root folders `/tv` y `/movies` respectivamente.
+- **Jellyfin**: agregar bibliotecas apuntando a `/data/tvshows` y `/data/movies` (ya montados).
+
 ## Orden de servicios para levantar
 1. network ```sudo systemctl start docker-compose@networks```
 2. traefik (reverse proxy) ```sudo systemctl start docker-compose@traefik```

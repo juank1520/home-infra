@@ -12,7 +12,7 @@ services:
 
     volumes:
       - ./config:/config
-      - ./downloads:/downloads
+      - /mnt/media/downloads:/downloads
 
     networks:
       - internal_media_net

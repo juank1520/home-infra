@@ -11,8 +11,8 @@ services:
 
     volumes:
       - ./config/data:/config
-      - ./tvseries:/tv
-      - ./downloadclient-downloads:/downloads
+      - /mnt/media/tv:/tv
+      - /mnt/media/downloads:/downloads
 
     networks:
       - internal_media_net

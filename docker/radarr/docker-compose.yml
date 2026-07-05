@@ -11,8 +11,8 @@ services:
 
     volumes:
       - ./config/data:/config
-      - ./downloads:/downloads
-      - ./movies:/movies
+      - /mnt/media/downloads:/downloads
+      - /mnt/media/movies:/movies
 
     networks:
       - internal_media_net

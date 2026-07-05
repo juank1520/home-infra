@@ -11,8 +11,8 @@ services:
       - JELLYFIN_PublishedServerUrl=https://jellyfin.${BASE_DOMAIN}
     volumes:
       - ./config/data:/config
-      - /tvseries:/data/tvshows
-      - /movies:/data/movies
+      - /mnt/media/tv:/data/tvshows
+      - /mnt/media/movies:/data/movies
 
     networks:
       - proxy_net
