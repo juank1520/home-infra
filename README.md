@@ -211,6 +211,25 @@ un push. Checklist manual, una sola vez, desde cada web UI:
   LAN-only que los *arr; si más adelante querés darle acceso remoto (como Jellyfin), quitá el
   middleware `jellyseerr-ipallowlist`.
 
+## Memoria (zram swap)
+Esta rasp es una **Pi 4 con 2GB de RAM y sin swap** (`free -h` muestra `Swap: 0B`). Corriendo el
+stack completo (Jellyfin, qBittorrent, Sonarr, Radarr, Prowlarr, Jellyseerr, Traefik, Pi-hole,
+Homepage) ya deja menos de 200MB libres — cualquier pico de memoria adicional (por ejemplo, correr
+`docker compose run --rm configarr`, que clona TRaSH-Guides y parsea JSON en memoria) puede agotar
+la RAM disponible. Sin swap, el kernel no tiene colchón: en vez de que ese proceso puntual se
+ponga más lento, todo el sistema empieza a competir por páginas de memoria (una request HTTP normal
+entre contenedores puede tardar más de un minuto en vez de milisegundos).
+
+`scripts/setup_zram.sh` instala `zram-tools` y habilita `zramswap.service` — swap comprimido en
+RAM en vez de un swapfile tradicional en la SD (evita desgastarla con escrituras). Se deja el
+`PERCENT=50`/`ALGO=lz4` por defecto de `/etc/default/zramswap`: `lz4` prioriza bajo costo de CPU
+sobre mejor ratio de compresión, que es lo que conviene en los núcleos ARM de una Pi 4. Correr una
+sola vez por SSH:
+```sh
+sudo ./scripts/setup_zram.sh
+```
+Verificar con `swapon --show` y `free -h` (debería aparecer una línea `zram0` en el swap).
+
 ## Configarr (perfiles de calidad de Sonarr/Radarr)
 [Configarr](https://github.com/raydak-labs/configarr) sincroniza automáticamente quality profiles
 y custom formats de TRaSH-Guides hacia Sonarr y Radarr vía su API — evita tener que copiarlos a

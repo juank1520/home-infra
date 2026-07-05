@@ -12,4 +12,5 @@ fi
 ./scripts/free_dns_port.sh
 ./scripts/docker_services.sh
 ./scripts/install_runner.sh
+scripts/setup_zram.sh
 sudo ./scripts/harden.sh
