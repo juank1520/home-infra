@@ -1,6 +1,6 @@
 services:
   cups:
-    image: ydkn/cups
+    image: ydkn/cups@sha256:76eb4fcc9bfce7573787938d9257cfced5dd21064559eae4ce112aa6a9d13ac2
     container_name: cups
     restart: unless-stopped
 
@@ -19,6 +19,9 @@ services:
     environment:
       - ADMIN_PASSWORD=${CUPS_ADMIN_PASSWORD}
       - CUPS_SERVER=${SERVER_IP}:631
+
+    security_opt:
+      - no-new-privileges:true
 
     labels:
       - "homepage.group=Sistema"

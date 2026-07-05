@@ -1,6 +1,6 @@
 services:
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:latest
+    image: lscr.io/linuxserver/prowlarr:2.4.0
     container_name: prowlarr
 #    user: "1000:1000"
 
@@ -17,6 +17,9 @@ services:
       - proxy_net
 
     restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
 
     labels:
       - "traefik.enable=true"

@@ -1,6 +1,6 @@
 services:
   pihole:
-    image: pihole/pihole:latest
+    image: pihole/pihole:2026.06.0
     container_name: pihole
     hostname: pihole
     restart: unless-stopped
@@ -14,7 +14,6 @@ services:
       FTLCONF_dns_listeningMode: "ALL"
       FTLCONF_misc_etc_dnsmasq_d: 'true'
       FTLCONF_dns_reply_host_IPv4: '${SERVER_IP}'
-#      FTLCONF_dns_reply_host_IPv6: '2800:98:1612:1559:29da:bdf1:a823:bdf7'
 
     volumes:
       - ./etc-pihole:/etc/pihole
@@ -28,6 +27,9 @@ services:
     networks:
       - dns_net
       - proxy_net
+
+    security_opt:
+      - no-new-privileges:true
 
     labels:
       - "traefik.enable=true"

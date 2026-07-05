@@ -1,8 +1,12 @@
 services:
   networks:
-    image: alpine:latest
+    image: alpine:3.24.1
     container_name: docker-networks-bootstrap
     command: ["sleep", "infinity"]
+
+    security_opt:
+      - no-new-privileges:true
+
     networks:
       - dns_net
       - proxy_net

@@ -1,6 +1,6 @@
 services:
   portainer:
-    image: portainer/portainer-ce:latest
+    image: portainer/portainer-ce:2.39.4
     container_name: portainer
     restart: always
     command: ["-H", "tcp://socket-proxy:2375"]
@@ -12,6 +12,9 @@ services:
     networks:
       - proxy_net
       - socket_proxy_net
+
+    security_opt:
+      - no-new-privileges:true
 
     labels:
       - "traefik.enable=true"

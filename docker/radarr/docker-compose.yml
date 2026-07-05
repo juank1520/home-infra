@@ -1,6 +1,6 @@
 services:
   radarr:
-    image: lscr.io/linuxserver/radarr:latest
+    image: lscr.io/linuxserver/radarr:6.2.1
     container_name: radarr
 #    user: "1000:1000"
 
@@ -19,6 +19,9 @@ services:
       - proxy_net
 
     restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
 
     labels:
       - "traefik.enable=true"

@@ -1,6 +1,6 @@
 services:
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
+    image: lscr.io/linuxserver/qbittorrent:5.2.2
     container_name: qbittorrent
 #    user: "1000:1000"
 
@@ -19,6 +19,9 @@ services:
       - proxy_net
 
     restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
 
     labels:
       - "traefik.enable=true"
