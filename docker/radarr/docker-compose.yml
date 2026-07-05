@@ -8,6 +8,7 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TZ}
+      - RADARR__AUTH__APIKEY=${RADARR_API_KEY}
 
     volumes:
       - ./config/data:/config

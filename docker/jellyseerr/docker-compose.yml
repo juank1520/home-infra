@@ -1,0 +1,45 @@
+services:
+  jellyseerr:
+    image: fallenbagel/jellyseerr:2.7.3
+    container_name: jellyseerr
+
+    environment:
+      - TZ=${TZ}
+      - LOG_LEVEL=info
+
+    volumes:
+      - ./config:/app/config
+
+    networks:
+      - internal_media_net
+      - proxy_net
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyseerr.rule=Host(`jellyseerr.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.jellyseerr.entrypoints=websecure"
+      - "traefik.http.routers.jellyseerr.tls=true"
+      - "traefik.http.routers.jellyseerr.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.jellyseerr.tls.domains[0].main=*.${BASE_DOMAIN}"
+      - "traefik.http.services.jellyseerr.loadbalancer.server.port=5055"
+      - "traefik.docker.network=proxy_net"
+
+      - "traefik.http.middlewares.jellyseerr-ipallowlist.ipallowlist.sourcerange=192.168.1.0/24"
+      - "traefik.http.routers.jellyseerr.middlewares=jellyseerr-ipallowlist"
+
+      - "homepage.group=Multimedia"
+      - "homepage.name=Jellyseerr"
+      - "homepage.icon=jellyseerr.png"
+      - "homepage.href=https://jellyseerr.${BASE_DOMAIN}"
+      - "homepage.description=Buscar y solicitar peliculas y series"
+
+networks:
+  proxy_net:
+    external: true
+  internal_media_net:
+    external: true

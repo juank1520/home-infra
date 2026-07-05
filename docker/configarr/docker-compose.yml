@@ -1,0 +1,25 @@
+services:
+  configarr:
+    image: configarr/configarr:1.29.1
+    container_name: configarr
+
+    environment:
+      - TZ=${TZ}
+      - SONARR_API_KEY=${SONARR_API_KEY}
+      - RADARR_API_KEY=${RADARR_API_KEY}
+
+    volumes:
+      - ./config:/app/config
+      - ./repos:/app/repos
+
+    networks:
+      - internal_media_net
+
+    restart: "no"
+
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  internal_media_net:
+    external: true

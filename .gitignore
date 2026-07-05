@@ -12,6 +12,10 @@ docker/prowlarr/config/*
 
 docker/jellyfin/config/*
 
+docker/jellyseerr/config/*
+
+docker/configarr/repos/*
+
 docker/cups/config/data/*
 
 recommendation.md

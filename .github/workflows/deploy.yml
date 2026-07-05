@@ -31,6 +31,8 @@ jobs:
           DESEC_TOKEN: ${{ secrets.DESEC_TOKEN }}
           BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
           ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
+          SONARR_API_KEY: ${{ secrets.SONARR_API_KEY }}
+          RADARR_API_KEY: ${{ secrets.RADARR_API_KEY }}
 
       - name: Notify deploy result
         if: always()

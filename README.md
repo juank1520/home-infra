@@ -194,6 +194,53 @@ un push. Checklist manual, una sola vez, desde cada web UI:
   puerto `8080` — el nombre del contenedor resuelve por DNS de Docker dentro de
   `internal_media_net`); confirmar los root folders `/tv` y `/movies` respectivamente.
 - **Jellyfin**: agregar bibliotecas apuntando a `/data/tvshows` y `/data/movies` (ya montados).
+- **Jellyseerr** (`jellyseerr.${BASE_DOMAIN}`): portal de búsqueda y solicitudes de cara al
+  usuario. En su wizard inicial: conectar a **Jellyfin** (server URL `http://jellyfin:8096`, para
+  login y ver qué hay en la biblioteca) y a **Sonarr**/**Radarr** en *Settings → Services*
+  (`http://sonarr:8989` y `http://radarr:7878`, con las API keys de `SONARR_API_KEY`/
+  `RADARR_API_KEY` en `.env` — no hace falta entrar a la UI de Sonarr/Radarr a buscarlas, ver
+  sección Configarr) para que los pedidos disparen las descargas. Los nombres de contenedor
+  resuelven por DNS de Docker (Sonarr/Radarr vía `internal_media_net`, Jellyfin vía `proxy_net`).
+  Jellyseerr en sí no tiene mecanismo de config por archivo, así que este paso sigue siendo manual
+  por su propia naturaleza (no hay forma de automatizarlo vía git).
+
+  Corre sobre la imagen oficial `fallenbagel/jellyseerr` (LinuxServer no publica una), por eso su
+  config va en `/app/config` y no usa `PUID/PGID` como el resto del stack. El proyecto se está
+  unificando con Overseerr bajo el nombre **Seerr** — cuando saque imagen estable (hoy solo hay
+  tags `preview-seerr`), migrar es solo cambiar la imagen. Está detrás del mismo `ipallowlist`
+  LAN-only que los *arr; si más adelante querés darle acceso remoto (como Jellyfin), quitá el
+  middleware `jellyseerr-ipallowlist`.
+
+## Configarr (perfiles de calidad de Sonarr/Radarr)
+[Configarr](https://github.com/raydak-labs/configarr) sincroniza automáticamente quality profiles
+y custom formats de TRaSH-Guides hacia Sonarr y Radarr vía su API — evita tener que copiarlos a
+mano en cada UI. Se evaluó [Buildarr](https://github.com/buildarr/buildarr) para esto mismo (hace
+más, incluyendo el wiring completo Prowlarr↔Sonarr/Radarr), pero **su último commit es de mayo de
+2024** y tiene issues abiertos de 2025 donde crashea al leer configs de Radarr/Sonarr por cambios
+en sus APIs (drift real, sin nadie arreglándolo) — por eso el wiring de apps sigue siendo manual
+(ver arriba) y solo Configarr (activo, con commits semanales) se automatiza.
+
+**Modelo de ejecución — importante**: a diferencia del resto del stack, Configarr **no es un
+servicio persistente** — es un job de un solo disparo (corre, sincroniza, termina) sin cron ni
+scheduler interno. Por eso `docker/configarr/` tiene un archivo `.disabled`, para que no se enable
+como `docker-compose@configarr` bajo `stacks.target` (que asume servicios persistentes con
+`restart: unless-stopped`). Por ahora se corre a mano, cuando quieras aplicar cambios de
+TRaSH-Guides — todavía no hay ningún mecanismo de scheduling/timer automático para esto.
+
+Las API keys de Sonarr/Radarr **no se copian a mano**: `docker/sonarr/docker-compose.yml` y
+`docker/radarr/docker-compose.yml` fijan la key de cada app vía `SONARR__AUTH__APIKEY`/
+`RADARR__AUTH__APIKEY` (variables de entorno que Sonarr/Radarr leen para sobreescribir
+`config.xml` en cada arranque — no generan una key aleatoria propia), y `docker/configarr`
+lee esas mismas variables directo (`api_key: !env SONARR_API_KEY` en `config.yml`, sin ningún
+`secrets.yml`). Las dos viven en `SONARR_API_KEY`/`RADARR_API_KEY` de `.env.example`, cargadas
+como GitHub Secrets igual que `DESEC_TOKEN` (ver "Para agregar una variable nueva" arriba) —
+generalas una sola vez (ej. `openssl rand -hex 16`) y nunca más hay que tocarlas a mano.
+
+Para aplicar/actualizar los perfiles cuando quieras:
+```sh
+cd docker/configarr && docker compose --env-file=../../.env run --rm configarr
+```
+Esto sincroniza el perfil `WEB-1080p` (Sonarr) / `HD Bluray + WEB` (Radarr) contra tus instancias.
 
 ## Orden de servicios para levantar
 1. network ```sudo systemctl start docker-compose@networks```

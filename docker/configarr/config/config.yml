@@ -1,0 +1,25 @@
+localCustomFormatsPath: /app/cfs
+localConfigTemplatesPath: /app/templates
+
+sonarr:
+  instance1:
+    base_url: http://sonarr:8989
+    api_key: !env SONARR_API_KEY
+
+    quality_definition:
+      type: series
+
+    include:
+      - template: sonarr-quality-definition-series
+      - template: sonarr-v4-quality-profile-web-1080p
+      - template: sonarr-v4-custom-formats-web-1080p
+
+radarr:
+  instance1:
+    base_url: http://radarr:7878
+    api_key: !env RADARR_API_KEY
+
+    include:
+      - template: radarr-quality-definition-movie
+      - template: radarr-quality-profile-hd-bluray-web
+      - template: radarr-custom-formats-hd-bluray-web
