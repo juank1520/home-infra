@@ -122,6 +122,30 @@ dominio real, cambiar el provider en `traefik.yml.template` (`desec` → `cloudf
 token (`DESEC_TOKEN` → el nombre que espere el provider de Cloudflare, `CF_DNS_API_TOKEN`) — la
 arquitectura de split-horizon y las labels de los servicios no cambian.
 
+## Dashboard (Homepage)
+`docker/homepage` corre [gethomepage/homepage](https://gethomepage.dev) en la raíz de `BASE_DOMAIN`
+(`https://$BASE_DOMAIN`, sin subdominio) — muestra un box por servicio con su descripción y un link
+directo a su URL. A diferencia de los demás servicios, su router de Traefik pide un certificado
+propio para el dominio raíz (`tls.domains[0].main=$BASE_DOMAIN`) en vez del wildcard
+(`*.$BASE_DOMAIN`) que usan los subdominios — el wildcard no cubre el dominio raíz.
+
+Homepage descubre los servicios leyendo labels `homepage.*` directamente de los contenedores (monta
+`/var/run/docker.sock` de solo lectura), no hay un `services.yaml` que mantener a mano. Para agregar
+un servicio nuevo al dashboard, agregar a su `docker-compose.yml`:
+```yaml
+labels:
+  - "homepage.group=Descargas"
+  - "homepage.name=MiServicio"
+  - "homepage.icon=miservicio.png"   # ver https://github.com/walkxcode/dashboard-icons
+  - "homepage.href=https://miservicio.${BASE_DOMAIN}"
+  - "homepage.description=Que hace este servicio"
+```
+Como las labels son parte de la config del contenedor, un `docker compose up -d` (recreate) es
+necesario para que Homepage las vea — un simple `restart` no basta.
+
+Portainer no está incluido en el dashboard (no se usa activamente), aunque sí quedó expuesto vía
+Traefik (`portainer.$BASE_DOMAIN`) por consistencia con el resto del stack.
+
 ## Networks
 Existen dos redes
 1. dns_net: Resuelve los DNS, ecucha en el puerto 53/tcp y 53/udp, y resuleve los nombres como pihole.$BASE_DOMAIN a la ip de la rasperry, esta red solo debe de ser visible para pi-hole

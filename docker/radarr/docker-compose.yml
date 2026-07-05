@@ -31,6 +31,12 @@ services:
       - "traefik.http.services.radarr.loadbalancer.server.port=7878"
       - "traefik.docker.network=proxy_net"
 
+      - "homepage.group=Descargas"
+      - "homepage.name=Radarr"
+      - "homepage.icon=radarr.png"
+      - "homepage.href=https://radarr.${BASE_DOMAIN}"
+      - "homepage.description=Descarga y organizacion automatica de peliculas"
+
 networks:
   proxy_net:
     external: true

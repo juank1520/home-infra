@@ -31,6 +31,12 @@ services:
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
       - "traefik.docker.network=proxy_net"
 
+      - "homepage.group=Descargas"
+      - "homepage.name=Sonarr"
+      - "homepage.icon=sonarr.png"
+      - "homepage.href=https://sonarr.${BASE_DOMAIN}"
+      - "homepage.description=Descarga y organizacion automatica de series"
+
 
 networks:
   proxy_net:

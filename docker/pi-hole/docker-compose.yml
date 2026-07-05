@@ -41,6 +41,12 @@ services:
       - "traefik.http.services.pihole.loadbalancer.server.port=80"
       - "traefik.docker.network=proxy_net"
 
+      - "homepage.group=Sistema"
+      - "homepage.name=Pi-hole"
+      - "homepage.icon=pi-hole.png"
+      - "homepage.href=https://pihole.${BASE_DOMAIN}/admin"
+      - "homepage.description=DNS y bloqueador de anuncios"
+
     healthcheck:
       test: ["CMD", "dig", "@127.0.0.1", "google.com"]
       interval: 30s

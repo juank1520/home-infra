@@ -31,10 +31,13 @@ services:
       - "traefik.http.routers.jellyfin-https.tls.certresolver=letsencrypt"
       - "traefik.http.routers.jellyfin-https.tls.domains[0].main=*.${BASE_DOMAIN}"
       - "traefik.http.routers.jellyfin-https.entrypoints=websecure"
-
-
       - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
       - "traefik.docker.network=proxy_net"
+      - "homepage.group=Multimedia"
+      - "homepage.name=Jellyfin"
+      - "homepage.icon=jellyfin.png"
+      - "homepage.href=https://jellyfin.${BASE_DOMAIN}"
+      - "homepage.description=Streaming de peliculas y series"
 
     restart: unless-stopped
 
