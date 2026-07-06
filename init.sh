@@ -1,6 +1,6 @@
 #!/bin/sh
 
-chmod +x ./scripts/*.sh
+chmod 750 ./scripts/*.sh
 
 if [ ! -f ./.env ]; then
     cp ./.env.example ./.env

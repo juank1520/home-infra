@@ -15,7 +15,12 @@ if [ -d "$REPO_DIR" ]; then
     git -C "$REPO_DIR" pull
 else
     echo "Cloning repository..."
-    git clone "https://$GITHUB_PAT@github.com/$REPO.git" "$REPO_DIR"
+    AUTH_HEADER="Authorization: Basic $(printf '%s:' "$GITHUB_PAT" | base64 | tr -d '\n')"
+    GIT_CONFIG_COUNT=1 \
+    GIT_CONFIG_KEY_0=http.extraHeader \
+    GIT_CONFIG_VALUE_0="$AUTH_HEADER" \
+    git clone "https://github.com/$REPO.git" "$REPO_DIR"
+    unset AUTH_HEADER
 fi
 
 cd "$REPO_DIR"

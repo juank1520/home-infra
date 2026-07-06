@@ -19,8 +19,9 @@ echo "   Selecciona el repositorio '$REPO' en la UI y haz click en 'Generate tok
 echo ""
 open "$PAT_URL"
 
-printf "2. Pega el token generado aqui: "
-read -r GITHUB_PAT
+printf "2. Pega el token generado aqui (no se mostrara en pantalla): "
+read -rs GITHUB_PAT
+echo ""
 
 if [ -z "$GITHUB_PAT" ]; then
     echo "Error: no se ingreso ningun token."
@@ -46,15 +47,26 @@ if [ "$SETUP_RUNNER" = "y" ] || [ "$SETUP_RUNNER" = "Y" ]; then
     fi
 fi
 
-echo ""
-echo "Copia y ejecuta este comando en tu Raspberry Pi:"
-echo ""
+# Build the install command (it necessarily contains the token) into a
+# variable and copy it to the clipboard instead of printing it. This keeps the
+# PAT out of the terminal scrollback, shell history and any terminal logging.
 if [ -n "$RUNNER_TOKEN" ]; then
-    echo "GITHUB_PAT=$GITHUB_PAT RUNNER_TOKEN=$RUNNER_TOKEN bash -c \"\$(curl -sSL \\"
+    ENV_PREFIX="GITHUB_PAT=$GITHUB_PAT RUNNER_TOKEN=$RUNNER_TOKEN"
 else
-    echo "GITHUB_PAT=$GITHUB_PAT bash -c \"\$(curl -sSL \\"
+    ENV_PREFIX="GITHUB_PAT=$GITHUB_PAT"
 fi
-echo "  -H 'Authorization: token $GITHUB_PAT' \\"
-echo "  -H 'Accept: application/vnd.github.v3.raw' \\"
-echo "  '$BOOTSTRAP_URL')\""
+INSTALL_CMD="$ENV_PREFIX bash -c \"\$(curl -sSL -H 'Authorization: token $GITHUB_PAT' -H 'Accept: application/vnd.github.v3.raw' '$BOOTSTRAP_URL')\""
+
+echo ""
+if command -v pbcopy >/dev/null 2>&1; then
+    printf '%s' "$INSTALL_CMD" | pbcopy
+    echo "Comando de instalacion copiado al portapapeles (contiene el token)."
+    echo "Pegalo y ejecutalo en tu Raspberry Pi. No se imprime aqui para no dejar"
+    echo "el token en el historial ni en los logs de la terminal."
+else
+    echo "No se encontro 'pbcopy'. Copia manualmente el siguiente comando"
+    echo "(contiene el token, evita que quede en logs):"
+    echo ""
+    printf '%s\n' "$INSTALL_CMD"
+fi
 echo ""

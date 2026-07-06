@@ -27,6 +27,7 @@ docker/homepage/config/logs/
 recommendation.md
 security.md
 security-v2.md
+security-status.md
 
 *.save
 *.O
