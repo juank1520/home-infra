@@ -1,0 +1,21 @@
+services:
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:v3.5.0
+    container_name: flaresolverr
+
+    environment:
+      - LOG_LEVEL=info
+      - TZ=${TZ}
+      - DISABLE_MEDIA=true
+
+    networks:
+      - internal_media_net
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  internal_media_net:
+    external: true

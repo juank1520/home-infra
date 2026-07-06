@@ -189,7 +189,8 @@ la base de datos interna de cada servicio, no en archivos del repo, así que no 
 un push. Checklist manual, una sola vez, desde cada web UI:
 
 - **Prowlarr**: agregar indexers, y en *Settings → Apps* conectar Sonarr y Radarr (sync automático
-  de indexers hacia ambos).
+  de indexers hacia ambos). Algunos indexers públicos (ej. 1337x) están detrás de Cloudflare y
+  necesitan **FlareSolverr** (ver sección propia abajo) para pasar el desafío.
 - **Sonarr / Radarr**: en *Settings → Download Clients* agregar qBittorrent (host `qbittorrent`,
   puerto `8080` — el nombre del contenedor resuelve por DNS de Docker dentro de
   `internal_media_net`); confirmar los root folders `/tv` y `/movies` respectivamente.
@@ -210,6 +211,33 @@ un push. Checklist manual, una sola vez, desde cada web UI:
   tags `preview-seerr`), migrar es solo cambiar la imagen. Está detrás del mismo `ipallowlist`
   LAN-only que los *arr; si más adelante querés darle acceso remoto (como Jellyfin), quitá el
   middleware `jellyseerr-ipallowlist`.
+
+## FlareSolverr (indexers detrás de Cloudflare)
+Algunos indexers públicos de Prowlarr (1337x es el caso típico) están protegidos por Cloudflare y
+Prowlarr no puede pasarlos solo — tira `Unable to access ..., blocked by CloudFlare Protection`.
+[FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) es un proxy que resuelve el desafío
+lanzando un Chrome headless real vía Selenium y devolviéndole las cookies a Prowlarr.
+
+**Costo real en esta rasp**: cada request a un indexer protegido lanza un browser Chrome completo
+— mucho más pesado que el pico de memoria que ya casi tumbó el sistema con Configarr (ver sección
+"Memoria" abajo). `DISABLE_MEDIA=true` en el compose reduce algo el consumo (no carga imágenes/CSS
+durante el desafío), pero no lo elimina. Si después de agregarlo notás que la rasp se pone lenta al
+buscar releases, la alternativa sana es simplemente no usar los indexers que lo requieren (ej.
+quedarte con TorrentGalaxy/LimeTorrents/Bitsearch, que no necesitan Cloudflare-bypass) en vez de
+forzar el proxy.
+
+Setup en Prowlarr (una sola vez, vía UI — no hay archivos de config para esto):
+1. *Settings → Indexers → Indexer Proxies* → Add → **FlareSolverr**.
+2. `Tags`: escribí un tag simple, ej. `flaresolverr` (en minúsculas).
+3. `Host`: `http://flaresolverr:8191`.
+4. Click el ícono de engranaje → `Request Timeout` = `180` (el desafío de Cloudflare puede tardar).
+5. **Test** → **Save**.
+6. Volver al indexer que lo necesita (ej. 1337x) → editarlo → agregarle el **mismo tag**
+   (`flaresolverr`) en su campo `Tags` → **Save**.
+
+Prowlarr solo enruta por FlareSolverr cuando **coinciden los tags** entre el proxy y el indexer, y
+únicamente si detecta Cloudflare en la respuesta — los demás indexers siguen yendo directo, sin
+pasar por el browser.
 
 ## Memoria (zram swap)
 Esta rasp es una **Pi 4 con 2GB de RAM y sin swap** (`free -h` muestra `Swap: 0B`). Corriendo el
