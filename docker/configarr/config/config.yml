@@ -14,9 +14,18 @@ sonarr:
       - template: sonarr-v4-quality-profile-web-1080p
       - template: sonarr-v4-custom-formats-web-1080p
 
-    # Download client declarativo. `qbit-internal` es el alias de red de qBittorrent
-    # acotado a internal_media_net, por eso no hace falta usuario/contrasena: qBittorrent
-    # hace bypass de auth para esa subnet (ver qbittorrent/docker-compose.yml).
+    media_naming:
+      series: default
+      season: default
+      episodes:
+        rename: true
+        standard: default
+        daily: default
+        anime: default
+
+    root_folders:
+      - /tv
+
     download_clients:
       data:
         - name: qBittorrent
@@ -30,6 +39,8 @@ sonarr:
             port: 8080
             use_ssl: false
             tv_category: tv
+      delete_unmanaged:
+        enabled: true
       config:
         enable_completed_download_handling: true
 
@@ -43,7 +54,15 @@ radarr:
       - template: radarr-quality-profile-hd-bluray-web
       - template: radarr-custom-formats-hd-bluray-web
 
-    # Mismo download client que Sonarr, via alias interno sin credenciales.
+    media_naming:
+      folder: default
+      movie:
+        rename: true
+        standard: standard
+
+    root_folders:
+      - /movies
+
     download_clients:
       data:
         - name: qBittorrent
@@ -57,5 +76,7 @@ radarr:
             port: 8080
             use_ssl: false
             movie_category: movies
+      delete_unmanaged:
+        enabled: true
       config:
         enable_completed_download_handling: true
