@@ -8,9 +8,9 @@ if [ ! -f ./.env ]; then
 fi
 
 ./scripts/github-config.sh
+sudo ./scripts/setup_zram.sh
 ./scripts/install_docker.sh
 ./scripts/free_dns_port.sh
 ./scripts/docker_services.sh
 ./scripts/install_runner.sh
-scripts/setup_zram.sh
 sudo ./scripts/harden.sh
