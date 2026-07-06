@@ -12,8 +12,13 @@ if command -v docker >/dev/null 2>&1; then
     . "$ENV_FILE"
   fi
 
+  # NOTE: uses `if` (not `[ -d ] && rm`) on purpose — under `set -e`, the
+  # `&&` form returns non-zero when the path is NOT a directory (the normal
+  # case), which would abort the whole script on the first call.
   ensure_file() {
-    [ -d "$1" ] && rm -rf "$1"
+    if [ -d "$1" ]; then
+      rm -rf "$1"
+    fi
   }
 
   RENDERED_UNIT_TMP=$(mktemp)

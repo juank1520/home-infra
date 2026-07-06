@@ -111,8 +111,13 @@ fi
 # before one of the individual file-mounts below existed on disk, this
 # silently leaves a stray directory that then blocks rendering/touch here
 # ("cannot create ...: Is a directory"). Clear it so the file wins.
+# NOTE: uses \`if\` (not \`[ -d ] && rm\`) on purpose — under \`set -e\`, the
+# \`&&\` form returns non-zero when the path is NOT a directory (the normal
+# case), which would abort the whole script on the first call.
 ensure_file() {
-    [ -d "\$1" ] && rm -rf "\$1"
+    if [ -d "\$1" ]; then
+        rm -rf "\$1"
+    fi
 }
 
 # Render pi-hole's dnsmasq host-record with the real LAN IP — this file is
