@@ -1,16 +1,11 @@
 services:
-  # Oneshot: siembra en qBittorrent.conf el bypass de auth por subnet ANTES de que
-  # arranque qbittorrent. Es idempotente (corre en cada deploy) y no toca ningun otro
-  # ajuste — solo garantiza estas dos claves bajo [Preferences]. No hay variable de
-  # entorno nativa para esto, por eso se parchea el .conf. El WHITELIST debe coincidir
-  # con la subnet de internal_media_net (ver networks/docker-compose.yml).
   qbittorrent-init:
     image: busybox:1.37.0
     container_name: qbittorrent-init
     network_mode: "none"
     restart: "no"
     environment:
-      - WHITELIST=172.28.0.0/16
+      - WHITELIST=172.19.0.0/16
     volumes:
       - ./config:/config
     command:
@@ -40,7 +35,6 @@ services:
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:5.2.2
     container_name: qbittorrent
-#    user: "1000:1000"
 
     depends_on:
       qbittorrent-init:
@@ -57,9 +51,6 @@ services:
       - /mnt/media/downloads:/downloads
 
     networks:
-      # Alias acotado a la red interna: los *arr conectan a `qbit-internal`, forzando
-      # que el trafico salga por internal_media_net (source IP dentro del whitelist).
-      # El acceso humano via Traefik sigue entrando por proxy_net -> pide contrasena.
       internal_media_net:
         aliases:
           - qbit-internal

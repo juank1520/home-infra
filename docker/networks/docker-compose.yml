@@ -25,12 +25,9 @@ networks:
   internal_media_net:
     name: internal_media_net
     driver: bridge
-    # Subnet fijada a proposito: qBittorrent hace bypass de autenticacion SOLO para
-    # este rango (WebUI\AuthSubnetWhitelist en qbittorrent/docker-compose.yml). Si
-    # cambias este CIDR, actualiza tambien el whitelist del init de qbittorrent.
     ipam:
       config:
-        - subnet: 172.28.0.0/16
+        - subnet: 172.19.0.0/16
 
   socket_proxy_net:
     name: socket_proxy_net
