@@ -80,6 +80,80 @@ services:
       - "homepage.href=https://torrent.${BASE_DOMAIN}"
       - "homepage.description=Cliente de descargas torrent"
 
+  qbittorrent-config:
+    image: curlimages/curl:8.11.1
+    container_name: qbittorrent-config
+    depends_on:
+      qbittorrent:
+        condition: service_started
+    networks:
+      - internal_media_net
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        # 07:00 -> 23:00 diurno throttled; 23:00 -> 07:00 nocturno a full.
+        SCHED_FROM_HOUR=7
+        SCHED_TO_HOUR=23
+
+        # Limites NOCTURNOS (velocidad normal). 0 = ilimitado. Unidad: BYTES/s.
+        DL_LIMIT=0            # descarga sin limite de noche
+        UP_LIMIT=10240        # subida SIEMPRE al minimo: 10 KiB/s (dia y noche)
+
+        # Limites DIURNOS (trickle, casi apagado). BYTES/s.
+        ALT_DL_LIMIT=51200    # 50 KiB/s
+        ALT_UP_LIMIT=10240    # 10 KiB/s
+
+        # Conexiones (subida y totales)
+        MAX_UPLOADS=1             # slots de subida globales (minimo: 1 sola conexion)
+        MAX_UPLOADS_PER_TORRENT=1 # slots de subida por torrent
+        MAX_CONNEC=200
+        MAX_CONNEC_PER_TORRENT=100
+
+        # Cola / actividad simultanea (protege la Raspberry Pi)
+        MAX_ACTIVE_DOWNLOADS=3
+        MAX_ACTIVE_UPLOADS=3
+        MAX_ACTIVE_TORRENTS=5
+
+        # Seeding: dejar de sembrar (pausar) al llegar a ratio o tiempo
+        MAX_RATIO=2.0
+        MAX_SEEDING_TIME=20160   # minutos (14 dias)
+
+        # Cifrado de conexiones: 0=preferir, 1=requerir (forzado), 2=desactivar
+        ENCRYPTION=1
+
+        json='{
+          "scheduler_enabled": true,
+          "schedule_from_hour": '"$$SCHED_FROM_HOUR"', "schedule_from_min": 0,
+          "schedule_to_hour": '"$$SCHED_TO_HOUR"', "schedule_to_min": 0,
+          "scheduler_days": 0,
+          "dl_limit": '"$$DL_LIMIT"', "up_limit": '"$$UP_LIMIT"',
+          "alt_dl_limit": '"$$ALT_DL_LIMIT"', "alt_up_limit": '"$$ALT_UP_LIMIT"',
+          "max_uploads": '"$$MAX_UPLOADS"', "max_uploads_per_torrent": '"$$MAX_UPLOADS_PER_TORRENT"',
+          "max_connec": '"$$MAX_CONNEC"', "max_connec_per_torrent": '"$$MAX_CONNEC_PER_TORRENT"',
+          "queueing_enabled": true,
+          "max_active_downloads": '"$$MAX_ACTIVE_DOWNLOADS"',
+          "max_active_uploads": '"$$MAX_ACTIVE_UPLOADS"',
+          "max_active_torrents": '"$$MAX_ACTIVE_TORRENTS"',
+          "max_ratio_enabled": true, "max_ratio": '"$$MAX_RATIO"', "max_ratio_act": 0,
+          "max_seeding_time_enabled": true, "max_seeding_time": '"$$MAX_SEEDING_TIME"',
+          "encryption": '"$$ENCRYPTION"'
+        }'
+
+        echo "Esperando WebUI de qBittorrent..."
+        i=0
+        until curl -sf -o /dev/null "http://qbit-internal:8080/api/v2/app/version"; do
+          i=$$((i+1)); [ $$i -gt 60 ] && { echo "timeout esperando qbittorrent"; exit 1; }
+          sleep 2
+        done
+
+        echo "Aplicando preferencias..."
+        curl -sf -X POST "http://qbit-internal:8080/api/v2/app/setPreferences" \
+          --data-urlencode "json=$$json"
+        echo "OK: preferencias de qBittorrent aplicadas"
+
 networks:
   proxy_net:
     external: true
