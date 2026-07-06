@@ -9,8 +9,11 @@ RUNNER_HOME="/opt/actions-runner"
 FETCH_SCRIPT="/usr/local/bin/home-infra-fetch.sh"
 SYNC_UNITS_SCRIPT="/usr/local/bin/home-infra-sync-units.sh"
 WRITE_ENV_SCRIPT="/usr/local/bin/home-infra-write-env.sh"
+NOTIFY_SCRIPT="/usr/local/bin/home-infra-notify.sh"
 DEPLOY_SCRIPT="/usr/local/bin/home-infra-deploy.sh"
 SUDOERS_FILE="/etc/sudoers.d/deploy-bot"
+NOTIFY_ENV_VARS="GMAIL_ADDRESS GMAIL_APP_PASSWORD DEPLOY_STATUS COMMIT_SHA COMMIT_MSG MANUAL_STEP_NEEDED"
+NOTIFY_ENV_VARS_CSV=$(printf '%s' "$NOTIFY_ENV_VARS" | tr ' ' ',')
 
 # .env.example is the single source of truth for which values flow from GHA
 # secrets into .env — adding a variable there is the only file-side change
@@ -208,6 +211,20 @@ sed -i "s#__REPO_DIR__#${REPO_DIR}#g; s#__ENV_VARS__#${ENV_VARS}#g" "$WRITE_ENV_
 sudo install -m 0755 -o root -g root "$WRITE_ENV_TMP" "$WRITE_ENV_SCRIPT"
 rm -f "$WRITE_ENV_TMP"
 
+# $RUNNER_USER has no group in common with $ADMIN_USER, so it can't read
+# notify_deploy.py directly under $REPO_DIR (owned by $ADMIN_USER) — running
+# it via this fixed, root-owned wrapper sidesteps that instead of loosening
+# permissions anywhere under $REPO_DIR (which would also affect acme.json/.env).
+echo "Installing fixed notify script at $NOTIFY_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
+NOTIFY_SCRIPT_TMP=$(mktemp)
+cat > "$NOTIFY_SCRIPT_TMP" << EOF
+#!/bin/sh
+set -e
+exec python3 "$REPO_DIR/scripts/notify_deploy.py"
+EOF
+sudo install -m 0755 -o root -g root "$NOTIFY_SCRIPT_TMP" "$NOTIFY_SCRIPT"
+rm -f "$NOTIFY_SCRIPT_TMP"
+
 echo "Installing fixed deploy script at $DEPLOY_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
 DEPLOY_SCRIPT_TMP=$(mktemp)
 cat > "$DEPLOY_SCRIPT_TMP" << EOF
@@ -235,6 +252,7 @@ SUDOERS_TMP=$(mktemp)
     printf '%s ALL=(%s) NOPASSWD: %s\n' "$RUNNER_USER" "$ADMIN_USER" "$FETCH_SCRIPT"
     printf '%s ALL=(%s) NOPASSWD:SETENV: %s\n' "$RUNNER_USER" "$ADMIN_USER" "$WRITE_ENV_SCRIPT"
     printf '%s ALL=(root) NOPASSWD: %s\n' "$RUNNER_USER" "$SYNC_UNITS_SCRIPT"
+    printf '%s ALL=(root) NOPASSWD:SETENV: %s\n' "$RUNNER_USER" "$NOTIFY_SCRIPT"
 } > "$SUDOERS_TMP"
 if sudo visudo -cf "$SUDOERS_TMP" >/dev/null 2>&1; then
     sudo install -m 0440 -o root -g root "$SUDOERS_TMP" "$SUDOERS_FILE"

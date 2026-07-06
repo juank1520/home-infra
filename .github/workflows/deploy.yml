@@ -36,7 +36,7 @@ jobs:
 
       - name: Notify deploy result
         if: always()
-        run: python3 "$REPO_DIR/scripts/notify_deploy.py"
+        run: sudo --preserve-env=GMAIL_ADDRESS,GMAIL_APP_PASSWORD,DEPLOY_STATUS,COMMIT_SHA,COMMIT_MSG,MANUAL_STEP_NEEDED /usr/local/bin/home-infra-notify.sh
         env:
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
