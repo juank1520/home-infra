@@ -188,9 +188,8 @@ montado todos comparten las mismas rutas de host — pero el cableado a nivel de
 la base de datos interna de cada servicio, no en archivos del repo, así que no se aplica solo con
 un push. Checklist manual, una sola vez, desde cada web UI:
 
-- **Prowlarr**: agregar indexers, y en *Settings → Apps* conectar Sonarr y Radarr (sync automático
-  de indexers hacia ambos). Algunos indexers públicos (ej. 1337x) están detrás de Cloudflare y
-  necesitan **FlareSolverr** (ver sección propia abajo) para pasar el desafío.
+- **Prowlarr**: ver la sección dedicada "Prowlarr — indexers, Sonarr/Radarr y FlareSolverr" más
+  abajo para el paso a paso completo.
 - **Sonarr / Radarr**: en *Settings → Download Clients* agregar qBittorrent (host `qbittorrent`,
   puerto `8080` — el nombre del contenedor resuelve por DNS de Docker dentro de
   `internal_media_net`); confirmar los root folders `/tv` y `/movies` respectivamente.
@@ -212,31 +211,67 @@ un push. Checklist manual, una sola vez, desde cada web UI:
   LAN-only que los *arr; si más adelante querés darle acceso remoto (como Jellyfin), quitá el
   middleware `jellyseerr-ipallowlist`.
 
-## FlareSolverr (indexers detrás de Cloudflare)
-Algunos indexers públicos de Prowlarr (1337x es el caso típico) están protegidos por Cloudflare y
-Prowlarr no puede pasarlos solo — tira `Unable to access ..., blocked by CloudFlare Protection`.
-[FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) es un proxy que resuelve el desafío
-lanzando un Chrome headless real vía Selenium y devolviéndole las cookies a Prowlarr.
+## Prowlarr — indexers, Sonarr/Radarr y FlareSolverr
+Todo esto se hace una sola vez desde la web UI de Prowlarr (`prowlarr.${BASE_DOMAIN}`) — no hay
+archivos de config para esto, vive en la base de datos interna de la app.
+
+### 1. Conectar Sonarr y Radarr
+Para que los indexers que agregues se sincronicen solos hacia ambas apps:
+1. *Settings → Apps* → botón `+`.
+2. **Sonarr**: `Prowlarr Server` vacío (auto), `Sonarr Server` = `http://sonarr:8989`, `API Key` =
+   el valor de `SONARR_API_KEY` en tu `.env`. **Test** → **Save**.
+3. **Radarr**: mismo proceso, `http://radarr:7878` y `RADARR_API_KEY`.
+
+### 2. Agregar un indexer
+*Indexers → Add Indexer* → buscá el nombre → click en él. Formulario largo, pero solo importan
+estos campos (el resto se deja en su valor por default):
+
+| Campo | Qué poner | Por qué |
+|---|---|---|
+| **Enable** | ✅ activado | Si no, Prowlarr lo ignora |
+| **Redirect** | ❌ apagado | Solo hace falta en un puñado de trackers puntuales (y es obligatorio en Usenet, no en torrents) |
+| **URL / Base URL** | El que viene por default (primero de la lista) | Prowlarr ya sabe qué mirror anda; si falla el test, probás otro de la lista |
+| **Sync Profile** | `Standard` (default) | Controla qué reglas se empujan a Sonarr/Radarr — no hace falta un perfil propio para empezar |
+| **Tags** | Vacío, salvo que necesite FlareSolverr (ver abajo) | Solo sirve para scoping — a varias instancias, o a un proxy |
+| **Indexer Priority** | Default (25) | 1 = más prioridad, 50 = menos. Se ajusta después si un indexer trae mucha basura |
+| **Seed Ratio** | Vacío (usa el default de la app) | Solo cortesía en trackers públicos, no hay enforcement como en uno privado |
+| **Apps Minimum Seeders** | Vacío o `1` | Evita agarrar torrents muertos (0 seeders) |
+| **Categories** | Todas tildadas | A menos que quieras limitar el indexer a solo películas o solo series |
+
+Al fondo: **Test** (debe salir verde ✅) → **Save**.
+
+### 3. Indexers recomendados (los que usa este setup)
+- **1337x** — catálogo general (películas y series). Está detrás de Cloudflare, necesita
+  FlareSolverr (paso 4) para pasar el test.
+- **LimeTorrents** — catálogo general, no necesita FlareSolverr.
+- **Nyaa.si** — específico para anime, no necesita FlareSolverr.
+
+Agregar los tres da redundancia — si uno no tiene resultados o está caído, los otros cubren.
+
+### 4. FlareSolverr (para indexers detrás de Cloudflare, como 1337x)
+Un indexer protegido por Cloudflare tira `Unable to access ..., blocked by CloudFlare Protection`
+en el test. [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) (`docker/flaresolverr/`)
+es un proxy que resuelve el desafío lanzando un Chrome headless real vía Selenium y devolviéndole
+las cookies a Prowlarr.
 
 **Costo real en esta rasp**: cada request a un indexer protegido lanza un browser Chrome completo
 — mucho más pesado que el pico de memoria que ya casi tumbó el sistema con Configarr (ver sección
 "Memoria" abajo). `DISABLE_MEDIA=true` en el compose reduce algo el consumo (no carga imágenes/CSS
-durante el desafío), pero no lo elimina. Si después de agregarlo notás que la rasp se pone lenta al
-buscar releases, la alternativa sana es simplemente no usar los indexers que lo requieren (ej.
-quedarte con TorrentGalaxy/LimeTorrents/Bitsearch, que no necesitan Cloudflare-bypass) en vez de
-forzar el proxy.
+durante el desafío), pero no lo elimina. Si notás que la rasp se pone lenta al buscar releases, la
+alternativa sana es simplemente no usar 1337x y quedarte con LimeTorrents/Nyaa.si, que no lo
+requieren.
 
-Setup en Prowlarr (una sola vez, vía UI — no hay archivos de config para esto):
+Setup en Prowlarr:
 1. *Settings → Indexers → Indexer Proxies* → Add → **FlareSolverr**.
 2. `Tags`: escribí un tag simple, ej. `flaresolverr` (en minúsculas).
 3. `Host`: `http://flaresolverr:8191`.
 4. Click el ícono de engranaje → `Request Timeout` = `180` (el desafío de Cloudflare puede tardar).
 5. **Test** → **Save**.
-6. Volver al indexer que lo necesita (ej. 1337x) → editarlo → agregarle el **mismo tag**
-   (`flaresolverr`) en su campo `Tags` → **Save**.
+6. Volver a **1337x** → editarlo → agregarle el **mismo tag** (`flaresolverr`) en su campo `Tags`
+   → **Save**.
 
 Prowlarr solo enruta por FlareSolverr cuando **coinciden los tags** entre el proxy y el indexer, y
-únicamente si detecta Cloudflare en la respuesta — los demás indexers siguen yendo directo, sin
+únicamente si detecta Cloudflare en la respuesta — LimeTorrents/Nyaa.si siguen yendo directo, sin
 pasar por el browser.
 
 ## Memoria (zram swap)

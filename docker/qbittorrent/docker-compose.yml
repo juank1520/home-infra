@@ -1,8 +1,50 @@
 services:
+  # Oneshot: siembra en qBittorrent.conf el bypass de auth por subnet ANTES de que
+  # arranque qbittorrent. Es idempotente (corre en cada deploy) y no toca ningun otro
+  # ajuste — solo garantiza estas dos claves bajo [Preferences]. No hay variable de
+  # entorno nativa para esto, por eso se parchea el .conf. El WHITELIST debe coincidir
+  # con la subnet de internal_media_net (ver networks/docker-compose.yml).
+  qbittorrent-init:
+    image: busybox:1.37.0
+    container_name: qbittorrent-init
+    network_mode: "none"
+    restart: "no"
+    environment:
+      - WHITELIST=172.28.0.0/16
+    volumes:
+      - ./config:/config
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        conf=/config/qBittorrent/qBittorrent.conf
+        mkdir -p /config/qBittorrent
+        [ -f "$$conf" ] || printf '[Preferences]\n' > "$$conf"
+        grep -q '^\[Preferences\]' "$$conf" || printf '[Preferences]\n' >> "$$conf"
+        grep -v '^WebUI\\AuthSubnetWhitelistEnabled=' "$$conf" \
+          | grep -v '^WebUI\\AuthSubnetWhitelist=' > "$$conf.new"
+        awk '
+          /^\[Preferences\]/ && !done {
+            print
+            print "WebUI\\AuthSubnetWhitelistEnabled=true"
+            print "WebUI\\AuthSubnetWhitelist='"$$WHITELIST"'"
+            done=1
+            next
+          }
+          { print }
+        ' "$$conf.new" > "$$conf"
+        rm -f "$$conf.new"
+        chown -R 1000:1000 /config/qBittorrent
+        echo "qBittorrent auth-subnet-whitelist seeded: $$WHITELIST"
+
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:5.2.2
     container_name: qbittorrent
 #    user: "1000:1000"
+
+    depends_on:
+      qbittorrent-init:
+        condition: service_completed_successfully
 
     environment:
       - PUID=1000
@@ -15,8 +57,13 @@ services:
       - /mnt/media/downloads:/downloads
 
     networks:
-      - internal_media_net
-      - proxy_net
+      # Alias acotado a la red interna: los *arr conectan a `qbit-internal`, forzando
+      # que el trafico salga por internal_media_net (source IP dentro del whitelist).
+      # El acceso humano via Traefik sigue entrando por proxy_net -> pide contrasena.
+      internal_media_net:
+        aliases:
+          - qbit-internal
+      proxy_net: {}
 
     restart: unless-stopped
 
