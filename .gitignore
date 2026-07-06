@@ -17,6 +17,8 @@ docker/jellyseerr/config/*
 docker/configarr/repos/*
 
 docker/cups/config/data/*
+/docker/cups/config/cupsd.conf
+/docker/cups/config/printers.conf
 
 docker/homepage/config/custom.css
 docker/homepage/config/custom.js

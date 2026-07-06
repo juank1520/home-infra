@@ -37,6 +37,14 @@ if command -v docker >/dev/null 2>&1; then
   touch "${REPO_DIR}/docker/traefik/acme.json"
   chmod 600 "${REPO_DIR}/docker/traefik/acme.json"
 
+  if [ -n "$SERVER_IP" ]; then
+    sed "s#__SERVER_IP__#${SERVER_IP}#g" \
+      "${REPO_DIR}/docker/cups/config/cupsd.conf.template" \
+      > "${REPO_DIR}/docker/cups/config/cupsd.conf"
+  fi
+  touch "${REPO_DIR}/docker/cups/config/printers.conf"
+  touch "${REPO_DIR}/docker/cups/config/printers.conf.O"
+
   # Enable stacks.target to inicilize when the system starts
   sudo systemctl enable stacks.target
 

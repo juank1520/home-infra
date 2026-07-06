@@ -2,9 +2,9 @@ LogLevel info
 
 
 Listen 0.0.0.0:631
-ServerName 192.168.1.144
+ServerName __SERVER_IP__
 ServerAlias *
-DefaultEncryption IfRequested
+DefaultEncryption Required
 
 
 
