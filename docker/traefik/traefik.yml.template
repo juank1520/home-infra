@@ -11,16 +11,16 @@ providers:
     network: proxy_net
 
 ping:
-  entryPoint: web
+  entryPoint: traefik-internal
 
 entryPoints:
   web:
     address: ":80"
-#    http:
-#      redirections:
-#        entryPoint:
-#          to: websecure
-#          scheme: https
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
   websecure:
     address: ":443"
     http:
@@ -28,6 +28,8 @@ entryPoints:
         certResolver: letsencrypt
         domains:
           - main: "*.__BASE_DOMAIN__"
+  traefik-internal:
+    address: ":8082"
 
 certificatesResolvers:
   letsencrypt:
@@ -35,10 +37,5 @@ certificatesResolvers:
       storage: /acme.json
       dnsChallenge:
         provider: desec
-        # lego's local self-check queries the authoritative nameservers over
-        # UDP 53, which this LAN/router blocks (outbound port 53 filtering), so
-        # the check always times out. Skip it — Let's Encrypt validates the TXT
-        # record from its own servers anyway. The deSEC API call that sets the
-        # record uses HTTPS, which works fine.
         propagation:
           disableChecks: true
