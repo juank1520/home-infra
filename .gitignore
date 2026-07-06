@@ -18,6 +18,12 @@ docker/configarr/repos/*
 
 docker/cups/config/data/*
 
+docker/homepage/config/custom.css
+docker/homepage/config/custom.js
+docker/homepage/config/kubernetes.yaml
+docker/homepage/config/proxmox.yaml
+docker/homepage/config/logs/
+
 recommendation.md
 security.md
 security-v2.md
