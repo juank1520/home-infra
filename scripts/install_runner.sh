@@ -103,9 +103,19 @@ if [ -f "\$ENV_FILE" ]; then
     . "\$ENV_FILE"
 fi
 
+# Docker auto-creates a directory at a bind-mount's host path when it
+# doesn't exist yet, instead of failing — if a container ever started
+# before one of the individual file-mounts below existed on disk, this
+# silently leaves a stray directory that then blocks rendering/touch here
+# ("cannot create ...: Is a directory"). Clear it so the file wins.
+ensure_file() {
+    [ -d "\$1" ] && rm -rf "\$1"
+}
+
 # Render pi-hole's dnsmasq host-record with the real LAN IP — this file is
 # bind-mounted as-is into the pihole container, so it can't go through
 # docker compose's \${SERVER_IP} interpolation like the compose files do.
+ensure_file "\${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf"
 if [ -n "\$SERVER_IP" ] && [ -n "\$BASE_DOMAIN" ]; then
     sed "s#__SERVER_IP__#\${SERVER_IP}#g; s#__BASE_DOMAIN__#\${BASE_DOMAIN}#g" \\
         "\${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf.template" \\
@@ -114,6 +124,7 @@ fi
 
 # Same reasoning for Traefik's static config — it's bind-mounted as-is, so
 # the wildcard domain has to be rendered in rather than interpolated.
+ensure_file "\${REPO_DIR}/docker/traefik/traefik.yml"
 if [ -n "\$BASE_DOMAIN" ]; then
     sed "s#__BASE_DOMAIN__#\${BASE_DOMAIN}#g" \\
         "\${REPO_DIR}/docker/traefik/traefik.yml.template" \\
@@ -122,15 +133,19 @@ fi
 
 # Traefik refuses to start if acme.json is missing or has looser
 # permissions than 600 (it stores the certificate's private key).
+ensure_file "\${REPO_DIR}/docker/traefik/acme.json"
 touch "\${REPO_DIR}/docker/traefik/acme.json"
 chmod 600 "\${REPO_DIR}/docker/traefik/acme.json"
 
+ensure_file "\${REPO_DIR}/docker/cups/config/cupsd.conf"
 if [ -n "\$SERVER_IP" ]; then
     sed "s#__SERVER_IP__#\${SERVER_IP}#g" \\
         "\${REPO_DIR}/docker/cups/config/cupsd.conf.template" \\
         > "\${REPO_DIR}/docker/cups/config/cupsd.conf"
 fi
+ensure_file "\${REPO_DIR}/docker/cups/config/printers.conf"
 touch "\${REPO_DIR}/docker/cups/config/printers.conf"
+ensure_file "\${REPO_DIR}/docker/cups/config/printers.conf.O"
 touch "\${REPO_DIR}/docker/cups/config/printers.conf.O"
 
 apply_stack() {
