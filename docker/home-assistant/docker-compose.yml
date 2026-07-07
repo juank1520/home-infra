@@ -1,0 +1,42 @@
+services:
+  home-assistant:
+    image: ghcr.io/home-assistant/home-assistant:2025.12
+    container_name: home-assistant
+
+    environment:
+      - TZ=${TZ}
+
+    volumes:
+      - ./config:/config
+      - /etc/localtime:/etc/localtime:ro
+
+    networks:
+      - proxy_net
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.home-assistant.rule=Host(`home-assistant.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.home-assistant.entrypoints=websecure"
+      - "traefik.http.routers.home-assistant.tls=true"
+      - "traefik.http.routers.home-assistant.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.home-assistant.tls.domains[0].main=*.${BASE_DOMAIN}"
+      - "traefik.http.services.home-assistant.loadbalancer.server.port=8123"
+      - "traefik.docker.network=proxy_net"
+
+      - "traefik.http.middlewares.home-assistant-ipallowlist.ipallowlist.sourcerange=192.168.1.0/24"
+      - "traefik.http.routers.home-assistant.middlewares=home-assistant-ipallowlist"
+
+      - "homepage.group=Sistema"
+      - "homepage.name=Home Assistant"
+      - "homepage.icon=home-assistant.png"
+      - "homepage.href=https://home-assistant.${BASE_DOMAIN}"
+      - "homepage.description=Automatizacion del hogar"
+
+networks:
+  proxy_net:
+    external: true

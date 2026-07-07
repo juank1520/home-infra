@@ -14,6 +14,9 @@ docker/jellyfin/config/*
 
 docker/jellyseerr/config/*
 
+docker/home-assistant/config/*
+!docker/home-assistant/config/configuration.yaml
+
 docker/configarr/repos/*
 
 docker/cups/config/data/*
@@ -26,9 +29,7 @@ docker/homepage/config/kubernetes.yaml
 docker/homepage/config/proxmox.yaml
 docker/homepage/config/logs/
 
-recommendation.md
-security.md
-security-v2.md
+lista-compras-hardware.md
 security-status.md
 
 *.save
