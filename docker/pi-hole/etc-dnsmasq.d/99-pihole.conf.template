@@ -8,3 +8,4 @@ cname=prowlarr.__BASE_DOMAIN__,home.__BASE_DOMAIN__
 cname=jellyfin.__BASE_DOMAIN__,home.__BASE_DOMAIN__
 cname=jellyseerr.__BASE_DOMAIN__,home.__BASE_DOMAIN__
 cname=portainer.__BASE_DOMAIN__,home.__BASE_DOMAIN__
+cname=home-assistant.__BASE_DOMAIN__,home.__BASE_DOMAIN__
