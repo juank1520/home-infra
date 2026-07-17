@@ -14,8 +14,15 @@ docker/jellyfin/config/*
 
 docker/jellyseerr/config/*
 
+# Home Assistant: versiona la config declarativa escrita a mano; ignora el
+# runtime (.storage con secretos inline, DB, logs) y el secrets.yaml renderizado.
 docker/home-assistant/config/*
 !docker/home-assistant/config/configuration.yaml
+!docker/home-assistant/config/automations.yaml
+!docker/home-assistant/config/scripts.yaml
+!docker/home-assistant/config/scenes.yaml
+!docker/home-assistant/config/secrets.yaml.template
+!docker/home-assistant/config/packages/
 
 docker/configarr/repos/*
 

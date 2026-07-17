@@ -33,6 +33,9 @@ jobs:
           ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
           SONARR_API_KEY: ${{ secrets.SONARR_API_KEY }}
           RADARR_API_KEY: ${{ secrets.RADARR_API_KEY }}
+          HA_LATITUDE: ${{ secrets.HA_LATITUDE }}
+          HA_LONGITUDE: ${{ secrets.HA_LONGITUDE }}
+          HA_ELEVATION: ${{ secrets.HA_ELEVATION }}
 
       - name: Notify deploy result
         if: always()

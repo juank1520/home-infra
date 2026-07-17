@@ -1,7 +1,16 @@
 default_config:
+
+homeassistant:
+  latitude: !secret home_latitude
+  longitude: !secret home_longitude
+  elevation: !secret home_elevation
+  packages: !include_dir_named packages
 http:
   use_x_forwarded_for: true
   trusted_proxies:
     - 172.16.0.0/12
     - 127.0.0.1
     - ::1
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml

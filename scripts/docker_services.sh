@@ -60,6 +60,15 @@ if command -v docker >/dev/null 2>&1; then
   ensure_file "${REPO_DIR}/docker/cups/config/printers.conf.O"
   touch "${REPO_DIR}/docker/cups/config/printers.conf.O"
 
+  # Render Home Assistant's secrets.yaml from .env — HA reads secrets.yaml (via
+  # !secret), not compose ${VAR} interpolation, so it needs the same sed pass.
+  ensure_file "${REPO_DIR}/docker/home-assistant/config/secrets.yaml"
+  if [ -n "$HA_LATITUDE" ] && [ -n "$HA_LONGITUDE" ]; then
+    sed "s#__HA_LATITUDE__#${HA_LATITUDE}#g; s#__HA_LONGITUDE__#${HA_LONGITUDE}#g; s#__HA_ELEVATION__#${HA_ELEVATION}#g" \
+      "${REPO_DIR}/docker/home-assistant/config/secrets.yaml.template" \
+      > "${REPO_DIR}/docker/home-assistant/config/secrets.yaml"
+  fi
+
   # Enable stacks.target to inicilize when the system starts
   sudo systemctl enable stacks.target
 
