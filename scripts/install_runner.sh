@@ -174,6 +174,14 @@ apply_stack() {
         || echo "WARNING: could not (re)apply docker-compose@\$name" >&2
 }
 
+disable_stack() {
+    dir="\$1"
+    name=\$(basename "\$dir")
+    systemctl disable --now "docker-compose@\$name" 2>/dev/null || true
+    (cd "\$dir" && docker compose --env-file="\${REPO_DIR}/.env" down) \\
+        || echo "WARNING: could not tear down docker-compose@\$name" >&2
+}
+
 # networks creates the external networks (dns_net, proxy_net,
 # internal_media_net) every other stack attaches to as external: true — this
 # loop runs docker compose directly instead of via systemctl (see comment
@@ -188,9 +196,12 @@ fi
 
 for dir in "\${REPO_DIR}"/docker/*/; do
     [ -d "\$dir" ] || continue
-    [ -f "\${dir}.disabled" ] && continue
     name=\$(basename "\$dir")
     [ "\$name" = "networks" ] && continue
+    if [ -f "\${dir}.disabled" ]; then
+        disable_stack "\$dir"
+        continue
+    fi
     apply_stack "\$dir"
 done
 EOF

@@ -74,8 +74,12 @@ if command -v docker >/dev/null 2>&1; then
 
   for dir in "${REPO_DIR}"/docker/*/; do
     [ -d "$dir" ] || continue
-    [ -f "${dir}.disabled" ] && continue
     name=$(basename "$dir")
+    if [ -f "${dir}.disabled" ]; then
+      sudo systemctl disable --now "docker-compose@${name}" 2>/dev/null || true
+      (cd "$dir" && sudo docker compose --env-file="${ENV_FILE}" down) || true
+      continue
+    fi
     sudo systemctl enable "docker-compose@${name}"
   done
 
