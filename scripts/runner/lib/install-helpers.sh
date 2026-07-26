@@ -9,6 +9,11 @@
 #             later against docker/**/*.template. sync-units even carries a
 #             literal __REPO_DIR__ (to render docker-compose@.service), which is
 #             why its install-time value uses @@REPO_DIR@@ instead of colliding.
+#
+# home-infra-sync-units.sh.template additionally carries two @@COMMON_...@@
+# markers (@@COMMON_UNIT_RENDER@@, @@COMMON_CONFIG_RENDER@@) that aren't sed
+# substitutions — see the splice step below, right before that template is
+# installed.
 
 # Kept as a separate, fixed, no-argument script (rather than inlining the git
 # commands in sudoers) because the repo URL contains ':' — a sudoers grammar
@@ -29,8 +34,25 @@ render_and_install home-infra-fetch.sh.template "$FETCH_SCRIPT" \
 # __HA_*__ / __REPO_DIR__ tokens inside are rendered at DEPLOY time by this
 # script itself against docker/**/*.template, so they must pass through untouched.
 echo "Installing fixed unit-sync script at $SYNC_UNITS_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
-render_and_install home-infra-sync-units.sh.template "$SYNC_UNITS_SCRIPT" \
-    "s#@@REPO_DIR@@#${REPO_DIR}#g"
+# This template shares its systemd-unit-render and per-service config-render
+# blocks with scripts/docker_services.sh (the interactive bootstrap script) —
+# kept in one place under scripts/lib/ so the two never drift. They're
+# SPLICED IN HERE, now, at install time (not `source`d by the installed
+# script at deploy time) so the file that ends up at $SYNC_UNITS_SCRIPT stays
+# a flat, self-contained, root-owned script with no runtime dependency on the
+# (mutable) repo clone — same invariant as every other line render_and_install
+# produces. A plain `git push` editing scripts/lib/common-*.sh can't change
+# what deploy-bot triggers as root until a human re-runs install_runner.sh.
+SYNC_UNITS_TMP=$(mktemp)
+awk -v unit_frag="${REPO_DIR}/scripts/lib/common-unit-render.sh" \
+    -v config_frag="${REPO_DIR}/scripts/lib/common-config-render.sh" '
+    /@@COMMON_UNIT_RENDER@@/   { while ((getline line < unit_frag)   > 0) print line; close(unit_frag);   next }
+    /@@COMMON_CONFIG_RENDER@@/ { while ((getline line < config_frag) > 0) print line; close(config_frag); next }
+    { print }
+' "$TEMPLATES_DIR/home-infra-sync-units.sh.template" \
+    | sed "s#@@REPO_DIR@@#${REPO_DIR}#g" > "$SYNC_UNITS_TMP"
+sudo install -m 0755 -o root -g root "$SYNC_UNITS_TMP" "$SYNC_UNITS_SCRIPT"
+rm -f "$SYNC_UNITS_TMP"
 
 # Writes the values GHA secrets injected into deploy-bot's own environment
 # (see .github/workflows/deploy.yml) into the repo's .env, which

@@ -274,6 +274,23 @@ Prowlarr solo enruta por FlareSolverr cuando **coinciden los tags** entre el pro
 únicamente si detecta Cloudflare en la respuesta — LimeTorrents/Nyaa.si siguen yendo directo, sin
 pasar por el browser.
 
+## Home Assistant — HACS
+[HACS](https://hacs.xyz) (Home Assistant Community Store) se instala de forma reproducible, no a
+mano por la UI: `scripts/docker_services.sh` (setup inicial) y
+`home-infra-sync-units.sh` (auto-deploy) descargan el release oficial pineado por `HACS_VERSION`
+desde GitHub y lo extraen en `docker/home-assistant/config/custom_components/hacs`. Es código de
+terceros vendored, no config escrita a mano, así que —igual que `packages/`— nunca se commitea
+(`docker/home-assistant/config/*` ya está en `.gitignore`); un archivo `.hacs_version` marca la
+versión instalada para que el paso sea idempotente y solo reinicie el contenedor cuando la versión
+realmente cambió. Para actualizar HACS: subir el valor de `HACS_VERSION` a mano en ambos scripts y
+hacer commit.
+
+El propio estado de HACS (qué integraciones/repos tiene agregados, el token de GitHub que usa para
+autenticarse) vive en `.storage/`, que este repo deliberadamente nunca versiona — por eso, después
+del primer deploy con HACS ya instalado, falta un paso manual único por la UI: Home Assistant →
+Settings → Devices & Services → Add Integration → buscar "HACS" → completar la autorización por
+device-flow de GitHub.
+
 ## Memoria (zram swap)
 Esta rasp es una **Pi 4 con 2GB de RAM y sin swap** (`free -h` muestra `Swap: 0B`). Corriendo el
 stack completo (Jellyfin, qBittorrent, Sonarr, Radarr, Prowlarr, Jellyseerr, Traefik, Pi-hole,

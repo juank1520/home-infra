@@ -18,7 +18,8 @@ else
         ca-certificates \
         curl \
         gnupg \
-        lsb-release
+        lsb-release \
+        unzip
 
     sudo mkdir -p /etc/apt/keyrings
 

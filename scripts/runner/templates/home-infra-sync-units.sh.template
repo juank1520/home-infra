@@ -1,16 +1,22 @@
 #!/bin/sh
 set -e
 REPO_DIR="@@REPO_DIR@@"
-# install (not redirection) so a stale symlink at the destination gets
-# replaced instead of written through — a plain `>` follows existing
-# symlinks and would silently overwrite whatever they point to.
-RENDERED_UNIT_TMP=$(mktemp)
-sed "s#__REPO_DIR__#${REPO_DIR}#g" "${REPO_DIR}/system/docker-compose@.service" > "$RENDERED_UNIT_TMP"
-install -m 0644 -o root -g root "$RENDERED_UNIT_TMP" /etc/systemd/system/docker-compose@.service
-rm -f "$RENDERED_UNIT_TMP"
-ln -sf "${REPO_DIR}/system/stacks.target" /etc/systemd/system/stacks.target
-systemctl daemon-reload
-systemctl enable stacks.target
+# Already running as root (installed root:root, invoked via a fixed no-arg
+# sudoers rule) — the shared fragments below use this instead of hardcoding
+# `sudo`, since scripts/docker_services.sh (the other consumer) needs it set.
+SUDO_PREFIX=""
+
+# The two markers below (COMMON_UNIT_RENDER, COMMON_CONFIG_RENDER — each
+# wrapped in double-@ delimiters) are NOT sed substitutions: scripts/runner/
+# lib/install-helpers.sh splices in the literal contents of
+# scripts/lib/common-unit-render.sh and scripts/lib/common-config-render.sh
+# in their place when install_runner.sh renders this template — NOT a
+# `source` at deploy time. That keeps the installed
+# /usr/local/bin/home-infra-sync-units.sh a static, self-contained file that
+# never re-reads the (mutable) repo clone once installed, same as every other
+# line in this script — a plain `git push` editing those shared files can't
+# change what runs as root here until a human re-runs install_runner.sh.
+@@COMMON_UNIT_RENDER@@
 
 # Source .env for SERVER_IP (used to render the dnsmasq template below).
 ENV_FILE="${REPO_DIR}/.env"
@@ -22,60 +28,10 @@ fi
 # doesn't exist yet, instead of failing — if a container ever started
 # before one of the individual file-mounts below existed on disk, this
 # silently leaves a stray directory that then blocks rendering/touch here
-# ("cannot create ...: Is a directory"). Clear it so the file wins.
-# NOTE: uses `if` (not `[ -d ] && rm`) on purpose — under `set -e`, the
-# `&&` form returns non-zero when the path is NOT a directory (the normal
-# case), which would abort the whole script on the first call.
-ensure_file() {
-    if [ -d "$1" ]; then
-        rm -rf "$1"
-    fi
-}
-
-# Render pi-hole's dnsmasq host-record with the real LAN IP — this file is
-# bind-mounted as-is into the pihole container, so it can't go through
-# docker compose's ${SERVER_IP} interpolation like the compose files do.
-ensure_file "${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf"
-if [ -n "$SERVER_IP" ] && [ -n "$BASE_DOMAIN" ]; then
-    sed "s#__SERVER_IP__#${SERVER_IP}#g; s#__BASE_DOMAIN__#${BASE_DOMAIN}#g" \
-        "${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf.template" \
-        > "${REPO_DIR}/docker/pi-hole/etc-dnsmasq.d/99-pihole.conf"
-fi
-
-# Same reasoning for Traefik's static config — it's bind-mounted as-is, so
-# the wildcard domain has to be rendered in rather than interpolated.
-ensure_file "${REPO_DIR}/docker/traefik/traefik.yml"
-if [ -n "$BASE_DOMAIN" ]; then
-    sed "s#__BASE_DOMAIN__#${BASE_DOMAIN}#g" \
-        "${REPO_DIR}/docker/traefik/traefik.yml.template" \
-        > "${REPO_DIR}/docker/traefik/traefik.yml"
-fi
-
-# Traefik refuses to start if acme.json is missing or has looser
-# permissions than 600 (it stores the certificate's private key).
-ensure_file "${REPO_DIR}/docker/traefik/acme.json"
-touch "${REPO_DIR}/docker/traefik/acme.json"
-chmod 600 "${REPO_DIR}/docker/traefik/acme.json"
-
-ensure_file "${REPO_DIR}/docker/cups/config/cupsd.conf"
-if [ -n "$SERVER_IP" ]; then
-    sed "s#__SERVER_IP__#${SERVER_IP}#g" \
-        "${REPO_DIR}/docker/cups/config/cupsd.conf.template" \
-        > "${REPO_DIR}/docker/cups/config/cupsd.conf"
-fi
-ensure_file "${REPO_DIR}/docker/cups/config/printers.conf"
-touch "${REPO_DIR}/docker/cups/config/printers.conf"
-ensure_file "${REPO_DIR}/docker/cups/config/printers.conf.O"
-touch "${REPO_DIR}/docker/cups/config/printers.conf.O"
-
-# Render Home Assistant's secrets.yaml from .env — HA reads secrets.yaml (via
-# !secret), not compose ${VAR} interpolation, so it needs the same sed pass.
-ensure_file "${REPO_DIR}/docker/home-assistant/config/secrets.yaml"
-if [ -n "$HA_LATITUDE" ] && [ -n "$HA_LONGITUDE" ]; then
-    sed "s#__HA_LATITUDE__#${HA_LATITUDE}#g; s#__HA_LONGITUDE__#${HA_LONGITUDE}#g; s#__HA_ELEVATION__#${HA_ELEVATION}#g" \
-        "${REPO_DIR}/docker/home-assistant/config/secrets.yaml.template" \
-        > "${REPO_DIR}/docker/home-assistant/config/secrets.yaml"
-fi
+# ("cannot create ...: Is a directory"). Clear it so the file wins. See
+# scripts/lib/common-config-render.sh for the ensure_file() definition this
+# comment used to sit above, and the pi-hole/traefik/cups/HA/HACS blocks.
+@@COMMON_CONFIG_RENDER@@
 
 apply_stack() {
     dir="$1"
