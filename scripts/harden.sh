@@ -64,6 +64,7 @@ ADMIN_USER="${SUDO_USER:-$(logname 2>/dev/null)}"
 DEPLOY_BOT_RULE="deploy-bot ALL=($ADMIN_USER) NOPASSWD: /usr/local/bin/home-infra-fetch.sh
 deploy-bot ALL=($ADMIN_USER) NOPASSWD:SETENV: /usr/local/bin/home-infra-write-env.sh
 deploy-bot ALL=(root) NOPASSWD: /usr/local/bin/home-infra-sync-units.sh
+deploy-bot ALL=(root) NOPASSWD: /usr/local/bin/home-infra-ha-sync.sh
 deploy-bot ALL=(root) NOPASSWD:SETENV: /usr/local/bin/home-infra-notify.sh"
 
 NOPASSWD_FILES=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -vF "$DEPLOY_BOT_SUDOERS" || true)
@@ -92,7 +93,7 @@ fi
 
 if [ -f "$DEPLOY_BOT_SUDOERS" ]; then
     if [ "$(cat "$DEPLOY_BOT_SUDOERS")" = "$DEPLOY_BOT_RULE" ]; then
-        ok "deploy-bot sudoers rule scoped exactly to git (as $ADMIN_USER) + unit sync + notify"
+        ok "deploy-bot sudoers rule scoped exactly to git (as $ADMIN_USER) + unit sync + HA sync + notify"
     else
         fail "deploy-bot sudoers rule" "Content differs from expected — review: visudo -f $DEPLOY_BOT_SUDOERS"
     fi
