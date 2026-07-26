@@ -17,7 +17,7 @@ SUDOERS_FILE="/etc/sudoers.d/deploy-bot"
 # read-only deploy key. These constants are rendered into the HA-sync template.
 HA_PRIVATE_REPO="juank1520/home-assistant-private"
 HA_PRIVATE_DIR="/opt/home-assistant-private"
-HA_DEPLOY_KEY="/etc/home-infra/ha-private-deploy"
+HA_DEPLOY_KEY="/root/.ssh/ha-private-deploy"
 NOTIFY_ENV_VARS="GMAIL_ADDRESS GMAIL_APP_PASSWORD DEPLOY_STATUS COMMIT_SHA COMMIT_MSG MANUAL_STEP_NEEDED"
 NOTIFY_ENV_VARS_CSV=$(printf '%s' "$NOTIFY_ENV_VARS" | tr ' ' ',')
 
