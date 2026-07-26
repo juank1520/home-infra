@@ -1,0 +1,21 @@
+name: Deploy Home Assistant packages
+
+# The Home Assistant packages/ live in the PRIVATE repo home-assistant-private.
+# A personal GitHub account can only attach self-hosted runners at the repo
+# level, so that repo can't run jobs on this server directly — instead it fans
+# a repository_dispatch event in here, where the existing deploy-bot runner is
+# registered, and this workflow does the actual pull + sync + reload.
+on:
+  repository_dispatch:
+    types: [ha-config-deploy]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-ha:
+    runs-on: self-hosted
+    steps:
+      - name: Pull private HA packages, validate and reload
+        run: sudo /usr/local/bin/home-infra-ha-sync.sh

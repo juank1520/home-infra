@@ -22,7 +22,6 @@ docker/home-assistant/config/*
 !docker/home-assistant/config/scripts.yaml
 !docker/home-assistant/config/scenes.yaml
 !docker/home-assistant/config/secrets.yaml.template
-!docker/home-assistant/config/packages/
 
 docker/configarr/repos/*
 

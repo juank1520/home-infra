@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+CHANGED=$(sudo -u @@ADMIN_USER@@ @@FETCH_SCRIPT@@)
+echo "$CHANGED"
+sudo -u @@ADMIN_USER@@ --preserve-env=@@ENV_VARS_CSV@@ @@WRITE_ENV_SCRIPT@@
+sudo @@SYNC_UNITS_SCRIPT@@
+if echo "$CHANGED" | grep -qE '(^|/)init\.sh$|^scripts/.*\.sh$'; then
+    echo "MANUAL_STEP_NEEDED=1"
+fi

@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+REPO_DIR="@@REPO_DIR@@"
+REPO_URL="@@REPO_URL@@"
+OLD_SHA=$(git -C "$REPO_DIR" rev-parse HEAD)
+# Fetches straight into origin/main's tracking ref (not just FETCH_HEAD) so a
+# manual "git pull" later sees the repo as already up to date, instead of
+# re-fetching what this script already applied.
+git -C "$REPO_DIR" fetch "$REPO_URL" +main:refs/remotes/origin/main
+git -C "$REPO_DIR" reset --hard refs/remotes/origin/main
+git -C "$REPO_DIR" diff --name-only "$OLD_SHA" HEAD

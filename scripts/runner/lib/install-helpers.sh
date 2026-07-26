@@ -1,0 +1,63 @@
+# Renders the runner helper templates (scripts/runner/templates/*.sh.template)
+# and installs each as a fixed, root-owned, no-argument script under
+# /usr/local/bin. Fixed bare script paths are what let the sudoers rules below
+# stay tight — deploy-bot can't widen or re-point what actually runs.
+#
+# Two token styles, on purpose:
+#   @@NAME@@  install-time — substituted here, now, from the constants above.
+#   __NAME__  deploy-time  — LEFT UNTOUCHED; the sync-units helper renders these
+#             later against docker/**/*.template. sync-units even carries a
+#             literal __REPO_DIR__ (to render docker-compose@.service), which is
+#             why its install-time value uses @@REPO_DIR@@ instead of colliding.
+
+# Kept as a separate, fixed, no-argument script (rather than inlining the git
+# commands in sudoers) because the repo URL contains ':' — a sudoers grammar
+# special character that would otherwise need fragile escaping there.
+# Prints the list of files changed by this fetch, so the deploy script can
+# tell whether anything outside its own reach (scripts/*.sh, init.sh) needs a
+# manual re-run.
+echo "Installing fixed fetch script at $FETCH_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
+render_and_install home-infra-fetch.sh.template "$FETCH_SCRIPT" \
+    "s#@@REPO_DIR@@#${REPO_DIR}#g; s#@@REPO_URL@@#https://github.com/${REPO}.git#g"
+
+# Regenerates the docker-compose@.service unit from the repo's template and
+# enables a unit for every directory under docker/ — so editing an existing
+# stack or adding a brand new one applies automatically. Deliberately does
+# NOT touch anything outside systemd units for docker-compose@* (no SSH,
+# firewall, users, or sudoers) — that's the line we chose not to cross.
+# Only @@REPO_DIR@@ is substituted here: the __SERVER_IP__ / __BASE_DOMAIN__ /
+# __HA_*__ / __REPO_DIR__ tokens inside are rendered at DEPLOY time by this
+# script itself against docker/**/*.template, so they must pass through untouched.
+echo "Installing fixed unit-sync script at $SYNC_UNITS_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
+render_and_install home-infra-sync-units.sh.template "$SYNC_UNITS_SCRIPT" \
+    "s#@@REPO_DIR@@#${REPO_DIR}#g"
+
+# Writes the values GHA secrets injected into deploy-bot's own environment
+# (see .github/workflows/deploy.yml) into the repo's .env, which
+# docker-compose@.service always passes to `docker compose --env-file`. Runs
+# as $ADMIN_USER (not root) since that's who owns the repo clone; only takes
+# env vars, no arguments, so sudoers doesn't need to escape or widen anything.
+# __ENV_VARS__ becomes the space-separated list derived from .env.example.
+echo "Installing fixed env-writer script at $WRITE_ENV_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
+render_and_install home-infra-write-env.sh.template "$WRITE_ENV_SCRIPT" \
+    "s#@@REPO_DIR@@#${REPO_DIR}#g; s#@@ENV_VARS@@#${ENV_VARS}#g"
+
+# $RUNNER_USER has no group in common with $ADMIN_USER, so it can't read
+# notify_deploy.py directly under $REPO_DIR (owned by $ADMIN_USER) — running
+# it via this fixed, root-owned wrapper sidesteps that instead of loosening
+# permissions anywhere under $REPO_DIR (which would also affect acme.json/.env).
+echo "Installing fixed notify script at $NOTIFY_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
+render_and_install home-infra-notify.sh.template "$NOTIFY_SCRIPT" \
+    "s#@@REPO_DIR@@#${REPO_DIR}#g"
+
+echo "Installing fixed deploy script at $DEPLOY_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
+render_and_install home-infra-deploy.sh.template "$DEPLOY_SCRIPT" \
+    "s#@@ADMIN_USER@@#${ADMIN_USER}#g; s#@@FETCH_SCRIPT@@#${FETCH_SCRIPT}#g; s#@@WRITE_ENV_SCRIPT@@#${WRITE_ENV_SCRIPT}#g; s#@@SYNC_UNITS_SCRIPT@@#${SYNC_UNITS_SCRIPT}#g; s#@@ENV_VARS_CSV@@#${ENV_VARS_CSV}#g"
+
+# Pulls Home Assistant's packages/ from the private repo and reloads HA. Runs
+# as root (scoped sudoers below) because it needs to write into the config
+# bind-mount and drive docker. Triggered by deploy-ha.yml, which the private
+# repo fans in via repository_dispatch. Baked-in constants only, no arguments.
+echo "Installing fixed HA-sync script at $HA_SYNC_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
+render_and_install home-infra-ha-sync.sh.template "$HA_SYNC_SCRIPT" \
+    "s#@@REPO_DIR@@#${REPO_DIR}#g; s#@@HA_PRIVATE_DIR@@#${HA_PRIVATE_DIR}#g; s#@@HA_PRIVATE_REPO@@#${HA_PRIVATE_REPO}#g; s#@@HA_DEPLOY_KEY@@#${HA_DEPLOY_KEY}#g"

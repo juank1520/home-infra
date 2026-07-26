@@ -1,0 +1,45 @@
+#!/bin/sh
+set -e
+PRIVATE_DIR="@@HA_PRIVATE_DIR@@"
+PRIVATE_URL="git@github.com:@@HA_PRIVATE_REPO@@.git"
+DEPLOY_KEY="@@HA_DEPLOY_KEY@@"
+PACKAGES_DIR="@@REPO_DIR@@/docker/home-assistant/config/packages"
+
+if [ ! -f "$DEPLOY_KEY" ]; then
+    echo "Error: deploy key $DEPLOY_KEY not found. Add a read-only deploy key for @@HA_PRIVATE_REPO@@ first." >&2
+    exit 1
+fi
+
+# -o IdentitiesOnly so it uses ONLY this key (not any agent/default key), and
+# accept-new to seed github.com into root's known_hosts on first connect.
+export GIT_SSH_COMMAND="ssh -i $DEPLOY_KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+if [ -d "$PRIVATE_DIR/.git" ]; then
+    git -C "$PRIVATE_DIR" fetch origin +main:refs/remotes/origin/main
+    git -C "$PRIVATE_DIR" reset --hard refs/remotes/origin/main
+else
+    git clone --branch main "$PRIVATE_URL" "$PRIVATE_DIR"
+fi
+
+mkdir -p "$PACKAGES_DIR"
+
+# The private repo root IS the packages/ dir. --delete so removals propagate,
+# but the excludes are never transferred NOR deleted from the destination —
+# repo metadata and non-package docs stay out of HA's config.
+rsync -a --delete \
+    --exclude '.git/' \
+    --exclude '.github/' \
+    --exclude 'README.md' \
+    --exclude '*.example' \
+    "$PRIVATE_DIR/" "$PACKAGES_DIR/"
+
+# Validate the FULL config before applying — a bad package would otherwise drop
+# HA into recovery mode on restart. If the check fails (or HA isn't running),
+# leave the current instance untouched and fail the job so it's visible.
+if ! docker exec home-assistant python -m homeassistant --script check_config --config /config; then
+    echo "HA config check FAILED — not restarting. Fix the package YAML and re-push." >&2
+    exit 1
+fi
+
+docker restart home-assistant
+echo "Home Assistant packages deployed and HA restarted."
