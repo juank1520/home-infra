@@ -2,6 +2,7 @@
 /docker/traefik/traefik.yml
 /docker/traefik/acme.json
 /docker/traefik/logs/traefik.log
+/docker/cloudflared/config.yml
 docker/qbittorrent/config/*
 
 docker/sonarr/config/*

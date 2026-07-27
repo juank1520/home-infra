@@ -6,7 +6,8 @@
 # dependency on the repo clone). Expects $REPO_DIR and $SUDO_PREFIX to already
 # be set by the caller ("sudo " for the interactive bootstrap, "" here since
 # the rendered script already runs as root), and $ENV_FILE already sourced
-# (SERVER_IP, BASE_DOMAIN, HA_LATITUDE/LONGITUDE/ELEVATION).
+# (SERVER_IP, BASE_DOMAIN, HA_LATITUDE/LONGITUDE/ELEVATION,
+# CLOUDFLARE_TUNNEL_TOKEN).
 
 # NOTE: uses `if` (not `[ -d ] && rm`) on purpose — under `set -e`, the
 # `&&` form returns non-zero when the path is NOT a directory (the normal
@@ -83,4 +84,15 @@ if [ ! -f "$HACS_VERSION_FILE" ] || [ "$(cat "$HACS_VERSION_FILE")" != "$HACS_VE
   echo "$HACS_VERSION" > "$HACS_VERSION_FILE"
   rm -rf "$HACS_TMP"
   ${SUDO_PREFIX}docker restart home-assistant 2>/dev/null || true
+fi
+
+# Cloudflare Tunnel (public access to home-assistant for the Alexa Smart Home
+# skill). config.yml is bind-mounted as-is, so the public hostname has to be
+# rendered in. Auth is the tunnel token (CLOUDFLARE_TUNNEL_TOKEN, passed as
+# the TUNNEL_TOKEN env var in docker-compose.yml), not a credentials file.
+ensure_file "${REPO_DIR}/docker/cloudflared/config.yml"
+if [ -n "$BASE_DOMAIN" ]; then
+  sed "s#__BASE_DOMAIN__#${BASE_DOMAIN}#g" \
+    "${REPO_DIR}/docker/cloudflared/config.yml.template" \
+    > "${REPO_DIR}/docker/cloudflared/config.yml"
 fi

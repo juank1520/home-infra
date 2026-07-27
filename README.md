@@ -99,7 +99,9 @@ DNS-01 — sin exponer ningún puerto a internet: solo crea un registro TXT temp
 controlas el dominio. Los nombres de cada servicio (`pihole.$BASE_DOMAIN`,
 `jellyfin.$BASE_DOMAIN`, etc.) solo existen en el DNS interno de Pi-hole; nunca se publican hacia
 afuera. El resultado es un certificado válido de fábrica en cualquier dispositivo (incluyendo TVs
-con Plex/Jellyfin), sin instalar ninguna CA propia.
+con Plex/Jellyfin), sin instalar ninguna CA propia. (La única excepción deliberada es
+`ha-remote.$BASE_DOMAIN`, publicada vía Cloudflare Tunnel — ver sección "Acceso remoto" abajo;
+el resto sigue 100% split-horizon.)
 
 Setup (una sola vez):
 1. Crear cuenta en [desec.io](https://desec.io), y crear un dominio `*.dedyn.io` (ej. `jchome.dedyn.io`).
@@ -121,6 +123,57 @@ Migrar más adelante a un dominio propio en Cloudflare solo implica cambiar `BAS
 dominio real, cambiar el provider en `traefik.yml.template` (`desec` → `cloudflare`) y rotar el
 token (`DESEC_TOKEN` → el nombre que espere el provider de Cloudflare, `CF_DNS_API_TOKEN`) — la
 arquitectura de split-horizon y las labels de los servicios no cambian.
+
+## Acceso remoto (Cloudflare Tunnel, para Alexa Smart Home)
+`docker/cloudflared` publica **solo** `home-assistant` hacia internet, en un hostname dedicado
+(`ha-remote.$BASE_DOMAIN`) distinto del `home-assistant.$BASE_DOMAIN` interno (ese sigue
+detrás del `ipallowlist` de Traefik, solo LAN). `cloudflared` corre en `proxy_net` y apunta
+directo al contenedor (`http://home-assistant:8123`) — no pasa por Traefik, así que el
+`ipallowlist` de la ruta LAN no se toca. No se abre ningún puerto en el router: `cloudflared`
+solo abre una conexión saliente hacia el borde de Cloudflare. Home Assistant ya confía en el
+rango de Docker (`trusted_proxies: 172.16.0.0/12` en `configuration.yaml`), así que no hace
+falta tocar su config para que `use_x_forwarded_for` funcione.
+
+**Importante — `$BASE_DOMAIN` (`*.dedyn.io`) NO está en Cloudflare, y no hace falta migrarlo.**
+Un Cloudflare Tunnel no requiere que la zona del dominio viva en Cloudflare: solo necesita un
+`CNAME` público apuntando a `<TUNNEL-ID>.cfargotunnel.com`, y ese `CNAME` se puede crear a mano
+en cualquier proveedor DNS — en este caso, deSEC, donde ya administras `$BASE_DOMAIN`.
+
+El túnel se crea desde el dashboard de Cloudflare Zero Trust (Networks → Tunnels → Create a
+tunnel → Cloudflared), **no** con `cloudflared tunnel login`/`create` por CLI — ese flujo legacy
+exige seleccionar una zona propia en Cloudflare para emitir su `cert.pem`, y como no hay ningún
+dominio en la cuenta, queda bloqueado. El túnel creado desde el dashboard te da un comando con
+un `--token`; ese token es la credencial (auth), pero el `ingress` (qué hostname va a qué
+contenedor) lo define `docker/cloudflared/config.yml.template` en este repo — **no** el tab
+"Public Hostname" del dashboard, que también exige una zona propia para escribir el DNS
+automáticamente.
+
+Setup (una sola vez):
+1. Crear una cuenta gratuita en [Cloudflare](https://dash.cloudflare.com/sign-up) si no la
+   tienes, y en el dashboard de Zero Trust: Networks → Tunnels → **Create a tunnel** → tipo
+   `Cloudflared` → nombrarlo (ej. `home-assistant`) → elegir el conector Docker. Cloudflare
+   muestra un comando con `--token <TOKEN>` — copia solo el valor del token, no hace falta
+   correr ese comando de ejemplo.
+2. El ID del túnel se ve en la página de detalle del túnel en el dashboard (o decodificando el
+   token en base64 — el JSON resultante trae `"t": "<TUNNEL-ID>"`).
+3. En el dashboard de **deSEC** (no Cloudflare), agregar un registro `CNAME`:
+   `ha-remote.$BASE_DOMAIN` → `<TUNNEL-ID>.cfargotunnel.com` (con el ID del paso 2).
+4. Cargar 1 secret en GitHub: `CLOUDFLARE_TUNNEL_TOKEN` (el token del paso 1).
+5. Aplicar: `gh workflow run deploy.yml --repo juank1520/home-infra` (o re-correr `init.sh`).
+6. Verificar: `docker logs cloudflared` debe mostrar conexiones registradas ("Registered tunnel
+   connection") y ningún error de "ingress rules are managed remotely" — si aparece ese error,
+   significa que el túnel no acepta `config.yml` local y hay que revisar con el usuario cómo
+   proceder (avisar antes de intentar workarounds).
+
+`docker/cloudflared/config.yml.template` se renderiza igual que `traefik.yml.template`
+(`__BASE_DOMAIN__`); el token se pasa como variable de entorno `TUNNEL_TOKEN` en
+`docker-compose.yml` (no hay archivo de credenciales que gitignorar).
+
+**URL pública final: `https://ha-remote.$BASE_DOMAIN`** — esta es la que usa el Account Linking
+de la Alexa Skill (`/auth/authorize`, `/auth/token`) y el endpoint de directivas
+(`/api/alexa/smart_home`); todos viven bajo el mismo hostname, protegidos por el login/OAuth
+nativo de Home Assistant. El certificado HTTPS para este hostname lo emite y renueva Cloudflare
+automáticamente en su borde (no pasa por el `acme.json`/Let's Encrypt de Traefik).
 
 ## Dashboard (Homepage)
 `docker/homepage` corre [gethomepage/homepage](https://gethomepage.dev) en la raíz de `BASE_DOMAIN`

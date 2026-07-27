@@ -36,6 +36,7 @@ jobs:
           HA_LATITUDE: ${{ secrets.HA_LATITUDE }}
           HA_LONGITUDE: ${{ secrets.HA_LONGITUDE }}
           HA_ELEVATION: ${{ secrets.HA_ELEVATION }}
+          CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
 
       - name: Notify deploy result
         if: always()

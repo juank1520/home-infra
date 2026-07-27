@@ -1,0 +1,27 @@
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2024.12.2
+    container_name: cloudflared
+    restart: unless-stopped
+
+    command: ["tunnel", "--config", "/etc/cloudflared/config.yml", "run"]
+
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./config.yml:/etc/cloudflared/config.yml:ro
+
+    networks:
+      - proxy_net
+
+    security_opt:
+      - no-new-privileges:true
+
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  proxy_net:
+    external: true

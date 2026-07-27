@@ -1,0 +1,4 @@
+ingress:
+  - hostname: ha-remote.__BASE_DOMAIN__
+    service: http://home-assistant:8123
+  - service: http_status:404
