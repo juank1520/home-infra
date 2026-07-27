@@ -28,7 +28,7 @@ jobs:
           CUPS_ADMIN_PASSWORD: ${{ secrets.CUPS_ADMIN_PASSWORD }}
           SERVER_IP: ${{ secrets.SERVER_IP }}
           TZ: ${{ secrets.TZ }}
-          DESEC_TOKEN: ${{ secrets.DESEC_TOKEN }}
+          CF_DNS_API_TOKEN: ${{ secrets.CF_DNS_API_TOKEN }}
           BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
           ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
           SONARR_API_KEY: ${{ secrets.SONARR_API_KEY }}

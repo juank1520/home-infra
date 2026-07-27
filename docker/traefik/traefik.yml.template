@@ -36,6 +36,6 @@ certificatesResolvers:
     acme:
       storage: /acme.json
       dnsChallenge:
-        provider: desec
+        provider: cloudflare
         propagation:
           disableChecks: true
