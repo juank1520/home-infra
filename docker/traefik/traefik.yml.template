@@ -39,3 +39,4 @@ certificatesResolvers:
         provider: cloudflare
         propagation:
           disableChecks: true
+          delayBeforeChecks: 30s

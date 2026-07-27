@@ -128,6 +128,9 @@ renderizan con `BASE_DOMAIN` (mismo patrón de plantillas que `SERVER_IP`); el c
 persiste en `docker/traefik/acme.json` (gitignored, permisos 600 — contiene la clave privada).
 El pre-chequeo de propagación de lego se desactiva (`propagation.disableChecks`) porque esta
 LAN bloquea el DNS saliente por UDP 53; Let's Encrypt hace la validación real desde sus servidores.
+Sin ese chequeo, lego le avisa a Let's Encrypt "listo" apenas crea el TXT, sin darle tiempo a
+propagar — por eso `propagation.delayBeforeChecks: 30s` fuerza una espera fija antes de avisar
+(si "No TXT record found" vuelve a aparecer en `docker/traefik/logs/traefik.log`, subir este valor).
 
 ## Acceso remoto (Cloudflare Tunnel, para Alexa Smart Home)
 `docker/cloudflared` publica **solo** `home-assistant` hacia internet, en un hostname dedicado
