@@ -117,6 +117,12 @@ Setup (una sola vez):
    `ACME_EMAIL` (correo para avisos de expiración de Let's Encrypt).
 4. Aplicar: `gh workflow run deploy.yml --repo juank1520/home-infra` (o re-correr `init.sh`).
 
+El secret/variable se llama `CF_DNS_API_TOKEN` en este repo, pero `docker/traefik/docker-compose.yml`
+lo pasa al contenedor como `CLOUDFLARE_DNS_API_TOKEN` — ese es el nombre exacto que el provider
+`cloudflare` de Traefik/lego espera (`CF_DNS_API_TOKEN` a secas no lo reconoce y falla con
+"credentials information are missing", visible solo en `docker/traefik/logs/traefik.log`, no en
+`docker logs traefik`).
+
 `docker/traefik/traefik.yml.template` y `docker/pi-hole/etc-dnsmasq.d/99-pihole.conf.template` se
 renderizan con `BASE_DOMAIN` (mismo patrón de plantillas que `SERVER_IP`); el certificado se
 persiste en `docker/traefik/acme.json` (gitignored, permisos 600 — contiene la clave privada).
