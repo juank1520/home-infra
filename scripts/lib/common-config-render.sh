@@ -7,7 +7,7 @@
 # be set by the caller ("sudo " for the interactive bootstrap, "" here since
 # the rendered script already runs as root), and $ENV_FILE already sourced
 # (SERVER_IP, BASE_DOMAIN, HA_LATITUDE/LONGITUDE/ELEVATION,
-# CLOUDFLARE_TUNNEL_TOKEN).
+# CLOUDFLARE_TUNNEL_TOKEN, ALEXA_CLIENT_ID/SECRET).
 
 # NOTE: uses `if` (not `[ -d ] && rm`) on purpose — under `set -e`, the
 # `&&` form returns non-zero when the path is NOT a directory (the normal
@@ -58,9 +58,21 @@ touch "${REPO_DIR}/docker/cups/config/printers.conf.O"
 # !secret), not compose ${VAR} interpolation, so it needs the same sed pass.
 ensure_file "${REPO_DIR}/docker/home-assistant/config/secrets.yaml"
 if [ -n "$HA_LATITUDE" ] && [ -n "$HA_LONGITUDE" ]; then
-  sed "s#__HA_LATITUDE__#${HA_LATITUDE}#g; s#__HA_LONGITUDE__#${HA_LONGITUDE}#g; s#__HA_ELEVATION__#${HA_ELEVATION}#g" \
+  sed "s#__HA_LATITUDE__#${HA_LATITUDE}#g; s#__HA_LONGITUDE__#${HA_LONGITUDE}#g; s#__HA_ELEVATION__#${HA_ELEVATION}#g; s#__ALEXA_CLIENT_ID__#${ALEXA_CLIENT_ID}#g; s#__ALEXA_CLIENT_SECRET__#${ALEXA_CLIENT_SECRET}#g" \
     "${REPO_DIR}/docker/home-assistant/config/secrets.yaml.template" \
     > "${REPO_DIR}/docker/home-assistant/config/secrets.yaml"
+
+  # Alexa Smart Home proactive reporting is optional. If unset, drop those
+  # two keys instead of leaving the literal placeholder as client_id/secret
+  # — that would make HA fail with a confusing auth error at report time
+  # instead of simply not attempting proactive reporting.
+  if [ -z "$ALEXA_CLIENT_ID" ] || [ -z "$ALEXA_CLIENT_SECRET" ]; then
+    echo "ALEXA_CLIENT_ID/ALEXA_CLIENT_SECRET not set, omitting Alexa Smart Home secrets from secrets.yaml"
+    grep -v -e '^alexa_client_id:' -e '^alexa_client_secret:' \
+      "${REPO_DIR}/docker/home-assistant/config/secrets.yaml" \
+      > "${REPO_DIR}/docker/home-assistant/config/secrets.yaml.tmp"
+    mv "${REPO_DIR}/docker/home-assistant/config/secrets.yaml.tmp" "${REPO_DIR}/docker/home-assistant/config/secrets.yaml"
+  fi
 fi
 
 # Install/upgrade HACS (Home Assistant Community Store), pinned by version.
