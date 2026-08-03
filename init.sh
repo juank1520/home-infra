@@ -13,4 +13,5 @@ sudo ./scripts/setup_zram.sh
 ./scripts/free_dns_port.sh
 ./scripts/docker_services.sh
 ./scripts/install_runner.sh
+sudo ./scripts/setup-web-pages-runner.sh
 sudo ./scripts/harden.sh

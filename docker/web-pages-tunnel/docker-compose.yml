@@ -1,0 +1,30 @@
+services:
+  web-pages-tunnel:
+    image: cloudflare/cloudflared:2024.12.2
+    container_name: web-pages-tunnel
+    restart: unless-stopped
+
+    # No --config / config.yml, unlike docker/cloudflared/ — this tunnel's
+    # ingress is config_src=cloudflare (managed remotely by Terraform in the
+    # web-pages repo), so the connector must NOT be given a local ingress
+    # block or it would ignore the remote config.
+    command: ["tunnel", "run"]
+
+    environment:
+      - TUNNEL_TOKEN=${WEB_PAGES_TUNNEL_TOKEN}
+
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+
+    networks:
+      - static_sites_net
+
+    security_opt:
+      - no-new-privileges:true
+
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  static_sites_net:
+    external: true

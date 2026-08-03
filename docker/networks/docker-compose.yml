@@ -12,6 +12,7 @@ services:
       - proxy_net
       - internal_media_net
       - socket_proxy_net
+      - static_sites_net
 
 networks:
   dns_net:
@@ -33,3 +34,7 @@ networks:
     name: socket_proxy_net
     driver: bridge
     internal: true
+
+  static_sites_net:
+    name: static_sites_net
+    driver: bridge

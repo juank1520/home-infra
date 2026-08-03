@@ -1,0 +1,29 @@
+services:
+  static-sites:
+    image: caddy:2.9-alpine
+    container_name: static-sites
+    restart: unless-stopped
+
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /srv/static-sites/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /srv/static-sites/sites:/srv/sites:ro
+      - static-sites-caddy-data:/data
+      - static-sites-caddy-config:/config
+
+    networks:
+      - static_sites_net
+
+    security_opt:
+      - no-new-privileges:true
+
+    labels:
+      - "traefik.enable=false"
+
+volumes:
+  static-sites-caddy-data:
+  static-sites-caddy-config:
+
+networks:
+  static_sites_net:
+    external: true

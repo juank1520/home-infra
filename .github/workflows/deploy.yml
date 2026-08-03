@@ -39,6 +39,7 @@ jobs:
           CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
           ALEXA_CLIENT_ID: ${{ secrets.ALEXA_CLIENT_ID }}
           ALEXA_CLIENT_SECRET: ${{ secrets.ALEXA_CLIENT_SECRET }}
+          WEB_PAGES_TUNNEL_TOKEN: ${{ secrets.WEB_PAGES_TUNNEL_TOKEN }}
 
       - name: Notify deploy result
         if: always()
