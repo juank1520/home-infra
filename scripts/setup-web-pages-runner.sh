@@ -9,6 +9,8 @@ set -e
 #     so the web-pages-bot runner can rsync content without sudo
 #   - system user `web-pages-bot` (no login, own home dir for npm's cache),
 #     in that group
+#   - /srv/terraform-state/web-pages, owned by web-pages-bot, so terraform
+#     state survives across deploy runs (the checkout workspace doesn't)
 #   - /usr/local/bin/static-sites-reload.sh, a fixed no-argument reload
 #     command, plus a sudoers rule scoping web-pages-bot to exactly that
 #     command — never general docker access
@@ -78,6 +80,15 @@ web_pages_bot_home="$(getent passwd web-pages-bot | cut -d: -f6)"
 mkdir -p "$web_pages_bot_home"
 chown web-pages-bot: "$web_pages_bot_home"
 echo "Ensured home directory $web_pages_bot_home for web-pages-bot"
+
+echo "--- terraform state dir ---"
+# Outside the git-cleaned checkout on purpose (see web-pages's
+# infra/terraform/providers.tf) — this is the only thing that lets
+# terraform state survive across deploy runs on this runner.
+TF_STATE_DIR="/srv/terraform-state/web-pages"
+mkdir -p "$TF_STATE_DIR"
+chown web-pages-bot: "$TF_STATE_DIR"
+echo "Prepared $TF_STATE_DIR"
 
 echo "--- reload script + sudoers ---"
 cat > "$RELOAD_SCRIPT" <<'SCRIPT'
