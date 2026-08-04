@@ -5,7 +5,10 @@ services:
     restart: unless-stopped
 
     ports:
-      - 631:631
+      # Bound to the LAN address rather than 0.0.0.0, same pattern as
+      # pi-hole. UFW does not filter docker-published ports, so this binding
+      # is the only thing scoping who can reach the CUPS admin interface.
+      - "${SERVER_IP}:631:631"
 
     devices:
       - /dev/bus/usb:/dev/bus/usb

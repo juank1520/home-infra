@@ -4,6 +4,15 @@ ENV_FILE="@@REPO_DIR@@/.env"
 ENV_TMP=$(mktemp)
 for var in @@ENV_VARS@@; do
     eval "val=\${$var:-}"
+    # A newline inside a secret would split into a second line here, turning
+    # whatever follows into its own KEY=VALUE (or a stray line) in .env.
+    # Consumers must never have to guess what that meant — fail the deploy
+    # loudly instead of silently writing a malformed file.
+    if [ "$(printf '%s' "$val" | wc -l)" -ne 0 ]; then
+        echo "Error: value of $var contains a newline; refusing to write .env" >&2
+        rm -f "$ENV_TMP"
+        exit 1
+    fi
     printf '%s=%s\n' "$var" "$val"
 done > "$ENV_TMP"
 chmod 600 "$ENV_TMP"

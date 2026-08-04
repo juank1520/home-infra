@@ -18,10 +18,30 @@ SUDO_PREFIX=""
 # change what runs as root here until a human re-runs install_runner.sh.
 @@COMMON_UNIT_RENDER@@
 
-# Source .env for SERVER_IP (used to render the dnsmasq template below).
+# Load .env for SERVER_IP (used to render the dnsmasq template below) and the
+# other values the render blocks need — but WITHOUT sourcing it. Its values
+# come from GitHub secrets via home-infra-write-env.sh and are written
+# unquoted, so `.` would execute any value containing whitespace or shell
+# metacharacters, and this script runs as root. Reading KEY=VALUE literally
+# removes that path entirely. The file format is untouched, so
+# `docker compose --env-file` still reads it exactly as before.
 ENV_FILE="${REPO_DIR}/.env"
 if [ -f "$ENV_FILE" ]; then
-    . "$ENV_FILE"
+    while IFS= read -r env_line || [ -n "$env_line" ]; do
+        case "$env_line" in
+            ''|'#'*) continue ;;
+            *=*) ;;
+            *) continue ;;
+        esac
+        env_key="${env_line%%=*}"
+        env_val="${env_line#*=}"
+        # Skip anything that isn't a plain identifier, so a stray line (say
+        # from a value that smuggled in a newline) never becomes a variable.
+        case "$env_key" in
+            ''|[!A-Za-z_]*|*[!A-Za-z0-9_]*) continue ;;
+        esac
+        export "$env_key=$env_val"
+    done < "$ENV_FILE"
 fi
 
 # Docker auto-creates a directory at a bind-mount's host path when it

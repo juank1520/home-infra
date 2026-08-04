@@ -1,6 +1,6 @@
 services:
   web-pages-tunnel:
-    image: cloudflare/cloudflared:2024.12.2
+    image: cloudflare/cloudflared:2026.7.3
     container_name: web-pages-tunnel
     restart: unless-stopped
 

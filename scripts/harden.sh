@@ -318,6 +318,44 @@ if command -v docker >/dev/null 2>&1; then
             fi
         fi
     fi
+
+    # The UFW section above says nothing about these: docker publishes ports
+    # with DNAT rules that are evaluated BEFORE ufw's INPUT chain, so a
+    # container bound to 0.0.0.0 is reachable from the LAN no matter what
+    # `ufw status` reports. Auditing it here is what keeps the overall
+    # "SECURE" verdict from overstating what UFW actually covers.
+    # Ports bound to a specific address (127.0.0.1, or $SERVER_IP as pi-hole
+    # does) are deliberate and skipped; only all-interfaces bindings count.
+    REVIEWED_PUBLIC_PORTS=" 80 443 "
+    UNEXPECTED_PUBLISHED=""
+    for c in $(docker ps --format '{{.Names}}' 2>/dev/null); do
+        for hp in $(docker inspect -f \
+            '{{range $p, $conf := .NetworkSettings.Ports}}{{range $conf}}{{.HostIp}}|{{.HostPort}} {{end}}{{end}}' \
+            "$c" 2>/dev/null); do
+            hip="${hp%|*}"
+            hport="${hp#*|}"
+            [ -n "$hport" ] || continue
+            case "$hip" in
+                0.0.0.0|::|"") ;;
+                *) continue ;;
+            esac
+            case "$REVIEWED_PUBLIC_PORTS" in
+                *" $hport "*) continue ;;
+            esac
+            # docker publishes the same port once for IPv4 and once for IPv6;
+            # report the binding, not each address family.
+            case " $UNEXPECTED_PUBLISHED " in
+                *" $c:$hport "*) continue ;;
+            esac
+            UNEXPECTED_PUBLISHED="$UNEXPECTED_PUBLISHED $c:$hport"
+        done
+    done
+    if [ -z "$UNEXPECTED_PUBLISHED" ]; then
+        ok "No unreviewed container ports published on all interfaces (UFW does not filter these)"
+    else
+        fail "Containers published on all interfaces:$UNEXPECTED_PUBLISHED" \
+             "UFW does NOT filter docker-published ports. Bind to \$SERVER_IP or 127.0.0.1 in the stack's docker-compose.yml, or add the port to REVIEWED_PUBLIC_PORTS if it's meant to be open."
+    fi
 else
     warn "Docker not installed" "Run: ./scripts/install_docker.sh"
 fi
