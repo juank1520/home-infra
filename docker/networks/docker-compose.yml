@@ -18,10 +18,16 @@ networks:
   dns_net:
     name: dns_net
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
 
   proxy_net:
     name: proxy_net
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 
   internal_media_net:
     name: internal_media_net
@@ -34,7 +40,13 @@ networks:
     name: socket_proxy_net
     driver: bridge
     internal: true
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
 
   static_sites_net:
     name: static_sites_net
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
