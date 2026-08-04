@@ -60,6 +60,10 @@ echo
 echo "--- Users & Sudo ---"
 
 DEPLOY_BOT_SUDOERS="/etc/sudoers.d/deploy-bot"
+# Reviewed exception like deploy-bot's: installed by web-pages's
+# scripts/setup-web-pages-runner.sh, scoped to exactly one fixed reload
+# command (see that script's header comment).
+WEB_PAGES_BOT_SUDOERS="/etc/sudoers.d/web-pages-bot"
 ADMIN_USER="${SUDO_USER:-$(logname 2>/dev/null)}"
 DEPLOY_BOT_RULE="deploy-bot ALL=($ADMIN_USER) NOPASSWD: /usr/local/bin/home-infra-fetch.sh
 deploy-bot ALL=($ADMIN_USER) NOPASSWD:SETENV: /usr/local/bin/home-infra-write-env.sh
@@ -67,9 +71,9 @@ deploy-bot ALL=(root) NOPASSWD: /usr/local/bin/home-infra-sync-units.sh
 deploy-bot ALL=(root) NOPASSWD: /usr/local/bin/home-infra-ha-sync.sh
 deploy-bot ALL=(root) NOPASSWD:SETENV: /usr/local/bin/home-infra-notify.sh"
 
-NOPASSWD_FILES=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -vF "$DEPLOY_BOT_SUDOERS" || true)
+NOPASSWD_FILES=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -vF -e "$DEPLOY_BOT_SUDOERS" -e "$WEB_PAGES_BOT_SUDOERS" || true)
 if [ -z "$NOPASSWD_FILES" ]; then
-    ok "No NOPASSWD sudo rules (excluding reviewed deploy-bot exception)"
+    ok "No NOPASSWD sudo rules (excluding reviewed deploy-bot/web-pages-bot exceptions)"
 else
     ALL_FIXED=1
     for f in $NOPASSWD_FILES; do
@@ -85,7 +89,7 @@ else
         fi
     done
     if [ "$ALL_FIXED" -eq 1 ]; then
-        NOPASSWD_CHECK=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -vF "$DEPLOY_BOT_SUDOERS" || true)
+        NOPASSWD_CHECK=$(grep -rl "NOPASSWD" /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -vF -e "$DEPLOY_BOT_SUDOERS" -e "$WEB_PAGES_BOT_SUDOERS" || true)
         [ -z "$NOPASSWD_CHECK" ] && fixed "NOPASSWD removed from sudo rules" \
                                  || fail "NOPASSWD sudo rules" "Remove manually with visudo"
     fi
