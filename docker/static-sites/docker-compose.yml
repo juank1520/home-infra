@@ -20,6 +20,12 @@ services:
     labels:
       - "traefik.enable=false"
 
+      - "homepage.group=Web"
+      - "homepage.name=Static Sites"
+      - "homepage.icon=caddy.png"
+      - "homepage.href=https://test.jchomes.uk"
+      - "homepage.description=Sitio web estatico servido con Caddy"
+
 volumes:
   static-sites-caddy-data:
   static-sites-caddy-config:
