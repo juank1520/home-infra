@@ -51,8 +51,14 @@ fi
 mkdir -p "$DEPLOY_ROOT/sites"
 touch "$DEPLOY_ROOT/Caddyfile"
 chown -R root:static_sites "$DEPLOY_ROOT"
-chmod 2775 "$DEPLOY_ROOT" "$DEPLOY_ROOT/sites"
-chmod 664 "$DEPLOY_ROOT/Caddyfile"
+# Recursive, not just the top two levels: content synced by earlier deploy
+# runs (owned by web-pages-bot) just got reclaimed by the chown above, so
+# without this its previous mode (whatever `rsync -rlt` left it at, usually
+# no group-write) would survive underneath — breaking the group-writable
+# guarantee this block exists to provide, and with it the next deploy's
+# rsync into that same tree.
+find "$DEPLOY_ROOT" -type d -exec chmod 2775 {} +
+find "$DEPLOY_ROOT" -type f -exec chmod 664 {} +
 echo "Prepared $DEPLOY_ROOT"
 
 echo "--- web-pages-bot user ---"
