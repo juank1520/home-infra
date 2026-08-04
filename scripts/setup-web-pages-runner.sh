@@ -88,6 +88,13 @@ echo "--- terraform state dir ---"
 TF_STATE_DIR="/srv/terraform-state/web-pages"
 mkdir -p "$TF_STATE_DIR"
 chown web-pages-bot: "$TF_STATE_DIR"
+# 0700, and tighten anything already inside: terraform state holds live
+# credentials (the cloudflared connector token) in cleartext, and terraform
+# creates *.tfstate.backup with the default umask (0644) — so relying on the
+# state files' own modes leaks the token to every local user. Locking the
+# directory keeps that closed no matter what mode terraform picks next.
+chmod 0700 "$TF_STATE_DIR"
+find "$TF_STATE_DIR" -type f -exec chmod 0600 {} +
 echo "Prepared $TF_STATE_DIR"
 
 echo "--- reload script + sudoers ---"

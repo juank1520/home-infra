@@ -64,6 +64,7 @@ DEPLOY_BOT_SUDOERS="/etc/sudoers.d/deploy-bot"
 # scripts/setup-web-pages-runner.sh, scoped to exactly one fixed reload
 # command (see that script's header comment).
 WEB_PAGES_BOT_SUDOERS="/etc/sudoers.d/web-pages-bot"
+WEB_PAGES_BOT_RULE="web-pages-bot ALL=(root) NOPASSWD: /usr/local/bin/static-sites-reload.sh"
 ADMIN_USER="${SUDO_USER:-$(logname 2>/dev/null)}"
 DEPLOY_BOT_RULE="deploy-bot ALL=($ADMIN_USER) NOPASSWD: /usr/local/bin/home-infra-fetch.sh
 deploy-bot ALL=($ADMIN_USER) NOPASSWD:SETENV: /usr/local/bin/home-infra-write-env.sh
@@ -103,6 +104,19 @@ if [ -f "$DEPLOY_BOT_SUDOERS" ]; then
     fi
 else
     warn "deploy-bot sudoers rule not present" "Run ./scripts/install_runner.sh to enable auto-deploy"
+fi
+
+# Excluding a file from the NOPASSWD sweep above only makes sense together
+# with pinning its contents: without this check, a tampered rule (say
+# `NOPASSWD: ALL`) would be both skipped by the sweep and reported as OK.
+if [ -f "$WEB_PAGES_BOT_SUDOERS" ]; then
+    if [ "$(cat "$WEB_PAGES_BOT_SUDOERS")" = "$WEB_PAGES_BOT_RULE" ]; then
+        ok "web-pages-bot sudoers rule scoped exactly to the static-sites reload command"
+    else
+        fail "web-pages-bot sudoers rule" "Content differs from expected — review: visudo -f $WEB_PAGES_BOT_SUDOERS"
+    fi
+else
+    warn "web-pages-bot sudoers rule not present" "Run ./scripts/setup-web-pages-runner.sh to enable web-pages deploys"
 fi
 
 echo
