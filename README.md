@@ -54,10 +54,21 @@ stacks con `docker compose --env-file=$REPO_DIR/.env`, así que cualquier stack 
 variables sin configuración adicional. `install_runner.sh` deriva la lista de variables leyendo
 los nombres de `.env.example`, así que no hay una segunda lista que mantener sincronizada ahí.
 
-Los secrets se cargan a mano en GitHub (Settings → Secrets and variables → Actions → New
-repository secret, o `gh secret set NAME`) — uno por cada nombre en `.env.example`. Como el deploy
-solo corre en push a `main`, la primera vez (o después de rotar un secret) hace falta aplicar los
-valores manualmente sin esperar un commit:
+Para cargarlos hay un script que corre en tu computadora personal (usa `gh`, ya autenticado):
+```sh
+./scripts/setup-gha-secrets.sh            # menú interactivo
+./scripts/setup-gha-secrets.sh --missing  # solo los que faltan
+./scripts/setup-gha-secrets.sh --review   # uno por uno: rotar / crear / dejar como está
+./scripts/setup-gha-secrets.sh --all      # preguntar por todos y sobreescribir
+```
+Cubre los secrets de este repo (uno por nombre en `.env.example`, más `GMAIL_ADDRESS` y
+`GMAIL_APP_PASSWORD`, que usa el paso de notificación) y los de `web-pages`. Genera passwords
+aleatorios donde aplica, nunca imprime valores, y reporta secrets que existen en GitHub pero que
+ningún workflow usa. GitHub no permite leer el valor de un secret, así que el script solo sabe si
+existe y cuándo cambió — por eso "dejar como está" es siempre el default.
+
+Como el deploy solo corre en push a `main`, la primera vez (o después de rotar un secret) hace
+falta aplicar los valores manualmente sin esperar un commit:
 ```sh
 gh workflow run deploy.yml --repo juank1520/home-infra
 ```
@@ -89,9 +100,20 @@ Para configurarlo despues, o volver a registrarlo:
    ```sh
    RUNNER_TOKEN=... ./scripts/install_runner.sh
    ```
-3. En GitHub → Settings → Secrets and variables → Actions, agregar `GMAIL_ADDRESS` y
-   `GMAIL_APP_PASSWORD` (un [App Password](https://myaccount.google.com/apppasswords) dedicado,
-   no la contraseña principal de tu cuenta) para que lleguen las notificaciones por correo.
+3. Cargar `GMAIL_ADDRESS` y `GMAIL_APP_PASSWORD` (un
+   [App Password](https://myaccount.google.com/apppasswords) dedicado, no la contraseña principal
+   de tu cuenta) con `./scripts/setup-gha-secrets.sh`, para que lleguen las notificaciones por
+   correo.
+
+El host corre un runner por repo — GitHub no permite compartir una registración entre repos sin
+una org común. El segundo, para `web-pages`, lo instala `setup-web-pages-runner.sh` corriendo como
+`web-pages-bot`:
+```sh
+./scripts/generate-runner-token.sh juank1520/web-pages   # en tu computadora
+WEB_PAGES_RUNNER_TOKEN=... sudo -E ./scripts/setup-web-pages-runner.sh   # en la rasp
+```
+Sin el token hace todo el resto del setup del host y explica cómo obtener uno, así que es seguro
+correrlo siempre.
 
 ## TLS / Certificados (Cloudflare + Let's Encrypt)
 Traefik obtiene un certificado wildcard real de Let's Encrypt (`*.$BASE_DOMAIN`) vía el reto
