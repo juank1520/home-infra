@@ -45,8 +45,15 @@ fi
 ENV_VARS=$(printf '%s' "$ENV_VAR_NAMES" | paste -sd' ' -)
 ENV_VARS_CSV=$(printf '%s' "$ENV_VAR_NAMES" | paste -sd, -)
 
+# Scoped to THIS repo's runner. The host also runs a second runner for the
+# web-pages repo (see setup-web-pages-runner.sh), so a bare
+# actions.runner.*.service glob matches both — it currently returns this one
+# only because "home-infra" happens to sort before "web-pages", which is not
+# something to rely on. GitHub names the unit
+# actions.runner.<owner>-<repo>.<runner-name>.service.
 runner_service_name() {
-    basename "$(ls /etc/systemd/system/actions.runner.*.service 2>/dev/null | head -n1)" 2>/dev/null || true
+    _rsn_repo_slug=$(printf '%s' "$REPO" | tr '/' '-')
+    basename "$(ls /etc/systemd/system/actions.runner."$_rsn_repo_slug".*.service 2>/dev/null | head -n1)" 2>/dev/null || true
 }
 
 # render_and_install <template-basename> <dest-path> <sed-script>

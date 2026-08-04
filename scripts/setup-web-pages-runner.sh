@@ -14,6 +14,9 @@ set -e
 #   - /usr/local/bin/static-sites-reload.sh, a fixed no-argument reload
 #     command, plus a sudoers rule scoping web-pages-bot to exactly that
 #     command — never general docker access
+#   - the second GitHub Actions runner (for the web-pages repo) running as
+#     web-pages-bot, when WEB_PAGES_RUNNER_TOKEN is supplied; skipped with
+#     instructions otherwise, since registration tokens are short-lived
 
 require_root() {
     if [ "$(id -u)" -ne 0 ]; then
@@ -27,6 +30,8 @@ require_root
 DEPLOY_ROOT="/srv/static-sites"
 RELOAD_SCRIPT="/usr/local/bin/static-sites-reload.sh"
 SUDOERS_FILE="/etc/sudoers.d/web-pages-bot"
+WEB_PAGES_REPO="juank1520/web-pages"
+WEB_PAGES_RUNNER_HOME="/opt/actions-runner-web-pages"
 
 echo "--- terraform ---"
 if command -v terraform >/dev/null 2>&1; then
@@ -118,6 +123,70 @@ else
 fi
 rm -f "$tmp_sudoers"
 
+echo "--- web-pages actions runner ---"
+# A second runner process, separate from this repo's own: GitHub can't share
+# one registration across repos without a common org. Same host, same scoped
+# permission model, different unix user.
+#
+# Registration needs a short-lived token, so it's the one part that can't
+# self-heal unattended — without WEB_PAGES_RUNNER_TOKEN this block just says
+# how to get one and moves on, exactly like install_runner.sh's guard. Every
+# other step above already ran, so re-running with the token later is enough.
+if [ -f "$WEB_PAGES_RUNNER_HOME/.runner" ]; then
+    echo "Runner already registered (.runner present), not re-registering."
+elif [ -z "${WEB_PAGES_RUNNER_TOKEN:-}" ]; then
+    echo "Runner not registered and no WEB_PAGES_RUNNER_TOKEN given — skipping."
+    echo "  On your personal computer:  ./scripts/generate-runner-token.sh juank1520/web-pages"
+    echo "  Then here:                  WEB_PAGES_RUNNER_TOKEN=... sudo -E ./scripts/setup-web-pages-runner.sh"
+else
+    mkdir -p "$WEB_PAGES_RUNNER_HOME"
+
+    case "$(uname -m)" in
+        aarch64|arm64) runner_arch="arm64" ;;
+        x86_64)        runner_arch="x64" ;;
+        armv7l|armv6l) runner_arch="arm" ;;
+        *) echo "Unsupported architecture $(uname -m)" >&2; exit 1 ;;
+    esac
+
+    runner_version=$(curl -fsSL https://api.github.com/repos/actions/runner/releases/latest \
+        | grep -m1 '"tag_name"' | cut -d'"' -f4 | sed 's/^v//')
+    if [ -z "$runner_version" ]; then
+        echo "Could not determine the latest actions-runner version." >&2
+        exit 1
+    fi
+    echo "Installing actions-runner $runner_version ($runner_arch)..."
+
+    tmp_tarball=$(mktemp)
+    curl -fsSL -o "$tmp_tarball" \
+        "https://github.com/actions/runner/releases/download/v${runner_version}/actions-runner-linux-${runner_arch}-${runner_version}.tar.gz"
+    tar xzf "$tmp_tarball" -C "$WEB_PAGES_RUNNER_HOME"
+    rm -f "$tmp_tarball"
+    chown -R web-pages-bot:web-pages-bot "$WEB_PAGES_RUNNER_HOME"
+
+    # web-pages-bot's shell is nologin, so force one for this call only.
+    echo "Registering runner against $WEB_PAGES_REPO..."
+    su -s /bin/sh web-pages-bot -c "cd '$WEB_PAGES_RUNNER_HOME' && ./config.sh --unattended \
+        --url 'https://github.com/$WEB_PAGES_REPO' \
+        --token '$WEB_PAGES_RUNNER_TOKEN' \
+        --name '$(hostname)-web-pages' \
+        --labels self-hosted \
+        --work _work"
+fi
+
+# Service name is scoped to this repo's slug on purpose: the host runs two
+# runners, and a bare actions.runner.*.service glob matches both.
+wp_service=$(basename "$(ls /etc/systemd/system/actions.runner."$(printf '%s' "$WEB_PAGES_REPO" | tr '/' '-')".*.service 2>/dev/null | head -n1)" 2>/dev/null || true)
+if [ -n "$wp_service" ]; then
+    if systemctl is-active --quiet "$wp_service"; then
+        echo "Service $wp_service active."
+    else
+        echo "Service $wp_service inactive, starting..."
+        systemctl start "$wp_service"
+    fi
+elif [ -f "$WEB_PAGES_RUNNER_HOME/.runner" ]; then
+    echo "Installing runner as a systemd service running as web-pages-bot..."
+    (cd "$WEB_PAGES_RUNNER_HOME" && ./svc.sh install web-pages-bot && ./svc.sh start)
+fi
+
 echo
 echo "Done. web-pages-bot is NOT in the docker group — only sudo access is to $RELOAD_SCRIPT."
-echo "Next (one-time, if not done yet): register the web-pages GitHub Actions runner to run as web-pages-bot."
