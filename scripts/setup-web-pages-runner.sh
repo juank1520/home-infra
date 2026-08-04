@@ -7,7 +7,8 @@ set -e
 #   - the `terraform` CLI (apt, HashiCorp's official repo)
 #   - group `static_sites` + /srv/static-sites/{sites,Caddyfile}, group-writable
 #     so the web-pages-bot runner can rsync content without sudo
-#   - system user `web-pages-bot` (no login, no home), in that group
+#   - system user `web-pages-bot` (no login, own home dir for npm's cache),
+#     in that group
 #   - /usr/local/bin/static-sites-reload.sh, a fixed no-argument reload
 #     command, plus a sudoers rule scoping web-pages-bot to exactly that
 #     command — never general docker access
@@ -58,10 +59,19 @@ echo "--- web-pages-bot user ---"
 if id web-pages-bot >/dev/null 2>&1; then
     echo "User web-pages-bot already exists"
 else
-    useradd --system --no-create-home --shell /usr/sbin/nologin web-pages-bot
+    useradd --system --create-home --shell /usr/sbin/nologin web-pages-bot
     echo "Created user web-pages-bot"
 fi
 usermod -aG static_sites web-pages-bot
+
+# Needed even for a "system" user: the deploy job runs `npm ci` as
+# web-pages-bot, and npm insists on a writable $HOME (cache, logs) or it
+# fails with EACCES. --create-home only takes effect at useradd time, so
+# make this idempotent step handle hosts provisioned before this fix too.
+web_pages_bot_home="$(getent passwd web-pages-bot | cut -d: -f6)"
+mkdir -p "$web_pages_bot_home"
+chown web-pages-bot: "$web_pages_bot_home"
+echo "Ensured home directory $web_pages_bot_home for web-pages-bot"
 
 echo "--- reload script + sudoers ---"
 cat > "$RELOAD_SCRIPT" <<'SCRIPT'
