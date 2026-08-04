@@ -65,12 +65,19 @@ render_and_install home-infra-write-env.sh.template "$WRITE_ENV_SCRIPT" \
     "s#@@REPO_DIR@@#${REPO_DIR}#g; s#@@ENV_VARS@@#${ENV_VARS}#g"
 
 # $RUNNER_USER has no group in common with $ADMIN_USER, so it can't read
-# notify_deploy.py directly under $REPO_DIR (owned by $ADMIN_USER) — running
-# it via this fixed, root-owned wrapper sidesteps that instead of loosening
-# permissions anywhere under $REPO_DIR (which would also affect acme.json/.env).
+# notify_deploy.py under $REPO_DIR (owned by $ADMIN_USER). A root-owned,
+# world-readable COPY at a fixed path solves that without loosening anything
+# under $REPO_DIR (which would also affect acme.json/.env) — and, unlike
+# exec'ing the repo path, it holds the same invariant as every other helper
+# here: a plain `git push` can't change what this actually runs.
+# Sending mail needs no privilege, so the wrapper is invoked directly by
+# deploy-bot (see .github/workflows/deploy.yml) with no sudoers rule at all.
+echo "Installing notify python at $NOTIFY_PY (root-owned, not writable by $RUNNER_USER)..."
+sudo install -m 0644 -o root -g root "$REPO_DIR/scripts/notify_deploy.py" "$NOTIFY_PY"
+
 echo "Installing fixed notify script at $NOTIFY_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
 render_and_install home-infra-notify.sh.template "$NOTIFY_SCRIPT" \
-    "s#@@REPO_DIR@@#${REPO_DIR}#g"
+    "s#@@NOTIFY_PY@@#${NOTIFY_PY}#g"
 
 echo "Installing fixed deploy script at $DEPLOY_SCRIPT (root-owned, not writable by $RUNNER_USER)..."
 render_and_install home-infra-deploy.sh.template "$DEPLOY_SCRIPT" \

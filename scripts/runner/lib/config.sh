@@ -10,6 +10,11 @@ FETCH_SCRIPT="/usr/local/bin/home-infra-fetch.sh"
 SYNC_UNITS_SCRIPT="/usr/local/bin/home-infra-sync-units.sh"
 WRITE_ENV_SCRIPT="/usr/local/bin/home-infra-write-env.sh"
 NOTIFY_SCRIPT="/usr/local/bin/home-infra-notify.sh"
+# The python the wrapper above runs, installed root-owned at a fixed path
+# rather than executed straight out of $REPO_DIR — same invariant as every
+# other helper: what runs here can't change until a human re-runs this
+# installer, no matter what lands in the repo clone.
+NOTIFY_PY="/usr/local/lib/home-infra-notify-deploy.py"
 DEPLOY_SCRIPT="/usr/local/bin/home-infra-deploy.sh"
 HA_SYNC_SCRIPT="/usr/local/bin/home-infra-ha-sync.sh"
 SUDOERS_FILE="/etc/sudoers.d/deploy-bot"
@@ -18,8 +23,6 @@ SUDOERS_FILE="/etc/sudoers.d/deploy-bot"
 HA_PRIVATE_REPO="juank1520/home-assistant-private"
 HA_PRIVATE_DIR="/opt/home-assistant-private"
 HA_DEPLOY_KEY="/root/.ssh/ha-private-deploy"
-NOTIFY_ENV_VARS="GMAIL_ADDRESS GMAIL_APP_PASSWORD DEPLOY_STATUS COMMIT_SHA COMMIT_MSG MANUAL_STEP_NEEDED"
-NOTIFY_ENV_VARS_CSV=$(printf '%s' "$NOTIFY_ENV_VARS" | tr ' ' ',')
 
 # The runner helper scripts (home-infra-*.sh) live as checked-in templates with
 # __PLACEHOLDER__ tokens; render_and_install below renders and installs them.
